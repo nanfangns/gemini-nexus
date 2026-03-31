@@ -16,10 +16,10 @@ export const SettingsTemplate = `
             </div>
             <div class="settings-body">
                 ${ConnectionSettingsTemplate}
+                ${PromptSettingsTemplate}
                 ${GeneralSettingsTemplate}
                 ${AppearanceSettingsTemplate}
                 ${ShortcutsSettingsTemplate}
-                ${PromptSettingsTemplate}
                 ${AboutSettingsTemplate}
             </div>
         </div>
