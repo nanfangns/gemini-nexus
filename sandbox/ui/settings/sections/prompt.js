@@ -22,7 +22,10 @@ export class PromptSection {
         if (presetSelect) {
             presetSelect.addEventListener('change', (e) => {
                 const value = e.target.value;
-                if (value === 'custom') return;
+                if (value === 'custom') {
+                    if (this.elements.promptInput) this.elements.promptInput.value = '';
+                    return;
+                }
                 const preset = PROMPT_PRESETS[value];
                 if (preset && this.elements.promptInput) {
                     this.elements.promptInput.value = preset;
