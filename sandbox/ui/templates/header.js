@@ -6,10 +6,28 @@ export const HeaderTemplate = `
             <button id="history-toggle" class="icon-btn" data-i18n-title="toggleHistory" title="Chat History" aria-label="Chat History">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            
-            <div class="model-select-wrapper">
-                <label for="model-select" class="sr-only" data-i18n="modelSelectTooltip">Select Model</label>
-                <select id="model-select" aria-label="Select Model">
+
+            <div class="model-select-wrapper" id="model-select-wrapper">
+                <button id="model-select-trigger" class="model-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Select model">
+                    <span class="model-select-label" id="model-select-label">Fast</span>
+                    <svg class="model-select-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="model-select-dropdown" id="model-select-dropdown" role="listbox">
+                    <div class="model-select-option active" data-value="gemini-3-flash" role="option" aria-selected="true">
+                        <span class="model-option-name">Fast</span>
+                        <span class="model-option-desc">gemini-3-flash</span>
+                    </div>
+                    <div class="model-select-option" data-value="gemini-3-flash-thinking" role="option" aria-selected="false">
+                        <span class="model-option-name">Thinking</span>
+                        <span class="model-option-desc">gemini-3-flash-thinking</span>
+                    </div>
+                    <div class="model-select-option" data-value="gemini-3-pro" role="option" aria-selected="false">
+                        <span class="model-option-name">3 Pro</span>
+                        <span class="model-option-desc">gemini-3-pro</span>
+                    </div>
+                </div>
+                <!-- Hidden native select for accessibility / form submission -->
+                <select id="model-select" style="display:none" aria-label="Select model">
                     <option value="gemini-3-flash">Fast</option>
                     <option value="gemini-3-flash-thinking">Thinking</option>
                     <option value="gemini-3-pro">3 Pro</option>

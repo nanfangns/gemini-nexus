@@ -44,46 +44,149 @@ body.layout-wide #history-toggle {
     color: var(--text-secondary);
 }
 
-/* Model Selector */
+/* ─── Model Selector (Custom Dropdown) ─── */
 .model-select-wrapper {
     position: relative;
     pointer-events: auto;
 }
 
-#model-select {
-    appearance: none;
-    -webkit-appearance: none;
+.model-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
     background: var(--icon-btn-bg);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--icon-btn-border);
-    border-radius: 16px;
-    height: 33px;
-    line-height: 31px; /* Center text vertically */
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    outline: none;
+    border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
     font-family: inherit;
-    text-align: center;
-    max-width: 200px;
     white-space: nowrap;
+    user-select: none;
+}
+
+.model-select-trigger:hover {
+    background: var(--icon-btn-hover);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+.model-select-trigger:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.model-select-trigger[aria-expanded="true"] {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.model-select-label {
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-#model-select:hover {
-    background: var(--icon-btn-hover);
-    color: var(--text-primary);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
+.model-select-arrow {
+    flex-shrink: 0;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0.7;
 }
 
-#model-select:active {
-    transform: translateY(0);
+.model-select-trigger[aria-expanded="true"] .model-select-arrow {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+/* Dropdown Panel */
+.model-select-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px) scale(0.96);
+    min-width: 220px;
+    background: var(--bg-modal);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 6px;
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: top center;
+}
+
+.model-select-dropdown.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Option Items */
+.model-select-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    gap: 12px;
+}
+
+.model-select-option:hover {
+    background: var(--btn-hover);
+}
+
+.model-select-option:active {
+    transform: scale(0.98);
+}
+
+.model-select-option.active {
+    background: var(--btn-active-bg);
+}
+
+.model-select-option.active .model-option-name {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.model-option-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.model-option-desc {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+/* Check mark for active option */
+.model-select-option.active::after {
+    content: '';
+    display: block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230b57d0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+    flex-shrink: 0;
 }
 
 /* Corner Button Styles */

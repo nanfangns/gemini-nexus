@@ -34,6 +34,9 @@ export class UIController {
         this.modelSelect = elements.modelSelect;
         this.tabSwitcherBtn = document.getElementById('tab-switcher-btn');
 
+        // Custom model dropdown
+        this._initModelDropdown();
+
         // Initialize Layout Detection
         this.checkLayout();
         window.addEventListener('resize', () => this.checkLayout());
@@ -47,104 +50,6 @@ export class UIController {
         } else {
             document.body.classList.remove('layout-wide');
         }
-    }
-
-    // --- DynamicModel List ---
-
-    updateModelList(settings) {
-        if (!this.modelSelect) return;
-        
-        const current = this.modelSelect.value;
-        this.modelSelect.innerHTML = '';
-        
-        // Determine provider. Fallback to 'web' if not set.
-        // Legacy support: if provider missing but useOfficialApi is true, assume 'official'.
-        const provider = settings.provider || (settings.useOfficialApi ? 'official' : 'web');
-        
-        let opts = [];
-        if (provider === 'official') {
-            // Official API Models
-            opts = [
-                { val: 'gemini-3-flash-preview', txt: 'Gemini 3 Flash' },
-                { val: 'gemini-3-pro-preview', txt: 'Gemini 3 Pro' }
-            ];
-        } else if (provider === 'openai') {
-            // OpenAI Compatible: Support multiple models comma-separated
-            const rawModels = settings.openaiModel || "";
-            // Split by comma, trim whitespace, remove empty entries
-            const models = rawModels.split(',').map(m => m.trim()).filter(m => m);
-
-            if (models.length === 0) {
-                opts = [{ val: 'openai_custom', txt: 'Custom Model' }];
-            } else {
-                opts = models.map(m => ({ val: m, txt: m }));
-            }
-        } else if (provider === 'anthropic') {
-            // Anthropic Native: Support multiple models comma-separated
-            const rawModels = settings.anthropicModel || "";
-            const models = rawModels.split(',').map(m => m.trim()).filter(m => m);
-
-            if (models.length === 0) {
-                opts = [{ val: 'anthropic_custom', txt: 'Custom Model' }];
-            } else {
-                opts = models.map(m => ({ val: m, txt: m }));
-            }
-        } else {
-            // Web Client Models
-            opts = [
-                { val: 'gemini-3-flash', txt: 'Fast' },
-                { val: 'gemini-3-flash-thinking', txt: 'Thinking' },
-                { val: 'gemini-3-pro', txt: '3 Pro' }
-            ];
-        }
-        
-        opts.forEach(o => {
-            const opt = document.createElement('option');
-            opt.value = o.val;
-            opt.textContent = o.txt;
-            this.modelSelect.appendChild(opt);
-        });
-        
-        // Restore selection if valid, else default
-        const match = opts.find(o => o.val === current);
-        if (match) {
-            this.modelSelect.value = current;
-        } else {
-            // Default to first option
-            if (opts.length > 0) {
-                this.modelSelect.value = opts[0].val;
-            }
-            // Dispatch change to update app state
-            this.modelSelect.dispatchEvent(new Event('change'));
-        }
-        
-        this._resizeModelSelect();
-    }
-
-    _resizeModelSelect() {
-        const select = this.modelSelect;
-        if (!select) return;
-        
-        // Safety check for empty or invalid selection
-        if (select.selectedIndex === -1) {
-            if (select.options.length > 0) select.selectedIndex = 0;
-            else return; // Should not happen if options exist
-        }
-
-        const tempSpan = document.createElement('span');
-        Object.assign(tempSpan.style, {
-            visibility: 'hidden',
-            position: 'absolute',
-            fontSize: '13px',
-            fontWeight: '500',
-            fontFamily: window.getComputedStyle(select).fontFamily,
-            whiteSpace: 'nowrap'
-        });
-        tempSpan.textContent = select.options[select.selectedIndex].text;
-        document.body.appendChild(tempSpan);
-        const width = tempSpan.getBoundingClientRect().width;
-        document.body.removeChild(tempSpan);
-        select.style.width = `${width + 34}px`;
     }
 
     // --- Delegation Methods ---
@@ -177,5 +82,211 @@ export class UIController {
         if (this.tabSwitcherBtn) {
             this.tabSwitcherBtn.style.display = show ? 'flex' : 'none';
         }
+    }
+
+    // --- Custom Model Dropdown ---
+    _initModelDropdown() {
+        const wrapper = document.getElementById('model-select-wrapper');
+        const trigger = document.getElementById('model-select-trigger');
+        const dropdown = document.getElementById('model-select-dropdown');
+        const label = document.getElementById('model-select-label');
+        const nativeSelect = document.getElementById('model-select');
+
+        if (!wrapper || !trigger || !dropdown || !label) return;
+
+        // Store reference for external use
+        this._modelDropdown = { trigger, dropdown, label, nativeSelect };
+
+        // Open/close on trigger click
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('open');
+            if (isOpen) this._closeDropdown();
+            else this._openDropdown();
+        });
+
+        // Option click
+        dropdown.addEventListener('click', (e) => {
+            const option = e.target.closest('.model-select-option');
+            if (!option) return;
+            const value = option.dataset.value;
+            this._selectOption(value);
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target)) this._closeDropdown();
+        });
+
+        // Keyboard: Escape closes, arrows navigate
+        trigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { this._closeDropdown(); return; }
+            if (!dropdown.classList.contains('open')) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this._openDropdown();
+                }
+            }
+        });
+
+        dropdown.addEventListener('keydown', (e) => {
+            const options = [...dropdown.querySelectorAll('.model-select-option')];
+            const current = dropdown.querySelector('.model-select-option:focus');
+            const idx = current ? options.indexOf(current) : -1;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = options[idx + 1] || options[0];
+                next.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = options[idx - 1] || options[options.length - 1];
+                prev.focus();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (document.activeElement) document.activeElement.click();
+            } else if (e.key === 'Escape') {
+                this._closeDropdown();
+                trigger.focus();
+            }
+        });
+    }
+
+    _openDropdown() {
+        const { trigger, dropdown } = this._modelDropdown;
+        dropdown.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+        // Focus first option
+        const first = dropdown.querySelector('.model-select-option');
+        if (first) first.focus();
+    }
+
+    _closeDropdown() {
+        const { trigger, dropdown } = this._modelDropdown;
+        dropdown.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    _selectOption(value) {
+        const { dropdown, label, nativeSelect } = this._modelDropdown;
+
+        // Update active state
+        dropdown.querySelectorAll('.model-select-option').forEach(opt => {
+            const isActive = opt.dataset.value === value;
+            opt.classList.toggle('active', isActive);
+            opt.setAttribute('aria-selected', isActive);
+        });
+
+        // Update label
+        const activeOpt = dropdown.querySelector(`.model-select-option[data-value="${value}"]`);
+        if (activeOpt) {
+            label.textContent = activeOpt.querySelector('.model-option-name').textContent;
+        }
+
+        // Sync native select
+        if (nativeSelect) {
+            nativeSelect.value = value;
+            nativeSelect.dispatchEvent(new Event('change'));
+        }
+
+        this._closeDropdown();
+    }
+
+    updateModelList(settings) {
+        const { label, nativeSelect } = this._modelDropdown || {};
+        if (!nativeSelect) {
+            // Fallback to native select if custom dropdown not init'd
+            if (!this.modelSelect) return;
+            this._updateNativeModelList(settings);
+            return;
+        }
+
+        // Determine provider
+        const provider = settings.provider || (settings.useOfficialApi ? 'official' : 'web');
+
+        const dropdown = document.getElementById('model-select-dropdown');
+        const trigger = document.getElementById('model-select-trigger');
+        const triggerLabel = label || document.getElementById('model-select-label');
+        if (!dropdown || !trigger || !triggerLabel) return;
+
+        let options = [];
+        if (provider === 'official') {
+            options = [
+                { val: 'gemini-3-flash-preview', txt: 'Gemini 3 Flash', desc: 'gemini-3-flash-preview' },
+                { val: 'gemini-3-pro-preview', txt: 'Gemini 3 Pro', desc: 'gemini-3-pro-preview' }
+            ];
+        } else if (provider === 'openai') {
+            const models = (settings.openaiModel || '').split(',').map(m => m.trim()).filter(Boolean);
+            options = models.length
+                ? models.map(m => ({ val: m, txt: m, desc: m }))
+                : [{ val: 'openai_custom', txt: 'Custom Model', desc: 'custom' }];
+        } else if (provider === 'anthropic') {
+            const models = (settings.anthropicModel || '').split(',').map(m => m.trim()).filter(Boolean);
+            options = models.length
+                ? models.map(m => ({ val: m, txt: m, desc: m }))
+                : [{ val: 'anthropic_custom', txt: 'Custom Model', desc: 'custom' }];
+        } else {
+            options = [
+                { val: 'gemini-3-flash', txt: 'Fast', desc: 'gemini-3-flash' },
+                { val: 'gemini-3-flash-thinking', txt: 'Thinking', desc: 'gemini-3-flash-thinking' },
+                { val: 'gemini-3-pro', txt: '3 Pro', desc: 'gemini-3-pro' }
+            ];
+        }
+
+        // Sync native select
+        nativeSelect.innerHTML = '';
+        options.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.val;
+            opt.textContent = o.txt;
+            nativeSelect.appendChild(opt);
+        });
+
+        // Rebuild dropdown
+        dropdown.innerHTML = '';
+        const currentValue = nativeSelect.value;
+        options.forEach(o => {
+            const div = document.createElement('div');
+            div.className = `model-select-option${o.val === currentValue ? ' active' : ''}`;
+            div.dataset.value = o.val;
+            div.setAttribute('role', 'option');
+            div.setAttribute('aria-selected', o.val === currentValue);
+            div.tabIndex = 0;
+            div.innerHTML = `<span class="model-option-name">${o.txt}</span><span class="model-option-desc">${o.desc}</span>`;
+            dropdown.appendChild(div);
+        });
+
+        // Update label
+        const current = options.find(o => o.val === currentValue) || options[0];
+        if (current) triggerLabel.textContent = current.txt;
+
+        // Close dropdown if open
+        dropdown.classList.remove('open');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    _updateNativeModelList(settings) {
+        // Legacy fallback
+        if (!this.modelSelect) return;
+        const provider = settings.provider || (settings.useOfficialApi ? 'official' : 'web');
+        this.modelSelect.innerHTML = '';
+        let opts = [];
+        if (provider === 'official') {
+            opts = [{ val: 'gemini-3-flash-preview', txt: 'Gemini 3 Flash' }, { val: 'gemini-3-pro-preview', txt: 'Gemini 3 Pro' }];
+        } else if (provider === 'openai') {
+            const models = (settings.openaiModel || '').split(',').map(m => m.trim()).filter(Boolean);
+            opts = models.length ? models.map(m => ({ val: m, txt: m })) : [{ val: 'openai_custom', txt: 'Custom Model' }];
+        } else if (provider === 'anthropic') {
+            const models = (settings.anthropicModel || '').split(',').map(m => m.trim()).filter(Boolean);
+            opts = models.length ? models.map(m => ({ val: m, txt: m })) : [{ val: 'anthropic_custom', txt: 'Custom Model' }];
+        } else {
+            opts = [{ val: 'gemini-3-flash', txt: 'Fast' }, { val: 'gemini-3-flash-thinking', txt: 'Thinking' }, { val: 'gemini-3-pro', txt: '3 Pro' }];
+        }
+        opts.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.val;
+            opt.textContent = o.txt;
+            this.modelSelect.appendChild(opt);
+        });
+        this._resizeModelSelect();
     }
 }
