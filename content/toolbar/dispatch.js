@@ -40,6 +40,7 @@
         }
 
         _dispatchWithModel(actionType, data, currentModel) {
+            console.log('[DEBUG _dispatchWithModel] actionType:', actionType, 'model:', currentModel);
             switch(actionType) {
                 case 'copy_selection':
                     if (this.controller.currentSelection) {
