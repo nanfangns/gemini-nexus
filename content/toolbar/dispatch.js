@@ -14,8 +14,15 @@
         get imageDetector() { return this.controller.imageDetector; }
 
         dispatch(actionType, data) {
-            const currentModel = this.ui.getSelectedModel();
+            // Always read fresh from chrome.storage.local to avoid stale dropdown state
+            // caused by failed storage.onChanged syncs between sidebar and floating toolbar
+            chrome.storage.local.get(['geminiModel', 'geminiProvider'], (res) => {
+                const freshModel = res.geminiModel || this.ui.getSelectedModel();
+                this._dispatchWithModel(actionType, data, freshModel);
+            });
+        }
 
+        _dispatchWithModel(actionType, data, currentModel) {
             switch(actionType) {
                 case 'copy_selection':
                     if (this.controller.currentSelection) {
@@ -27,20 +34,19 @@
                             });
                     }
                     break;
-                
+
                 case 'image_analyze':
                 case 'image_chat':
                 case 'image_describe':
                     {
                         const img = this.imageDetector.getCurrentImage();
                         if (!img) return;
-                        
+
                         const imgUrl = img.src;
                         const rect = img.getBoundingClientRect();
 
                         this.ui.hideImageButton();
-                        this.controller.lastSessionId = null; 
-                        // Use unified handler with 'analyze' mode which prompts for description
+                        this.controller.lastSessionId = null;
                         this.actions.handleImagePrompt(imgUrl, rect, 'analyze', currentModel);
                     }
                     break;
@@ -49,17 +55,16 @@
                     {
                         const img = this.imageDetector.getCurrentImage();
                         if (!img) return;
-                        
+
                         const imgUrl = img.src;
                         const rect = img.getBoundingClientRect();
 
                         this.ui.hideImageButton();
-                        this.controller.lastSessionId = null; 
-                        // Use 'ocr' mode to prompt for text extraction
+                        this.controller.lastSessionId = null;
                         this.actions.handleImagePrompt(imgUrl, rect, 'ocr', currentModel);
                     }
                     break;
-                
+
                 case 'image_remove_bg':
                 case 'image_remove_text':
                 case 'image_remove_watermark':
@@ -68,13 +73,13 @@
                     {
                         const img = this.imageDetector.getCurrentImage();
                         if (!img) return;
-                        
+
                         const imgUrl = img.src;
                         const rect = img.getBoundingClientRect();
 
                         this.ui.hideImageButton();
-                        this.controller.lastSessionId = null; 
-                        
+                        this.controller.lastSessionId = null;
+
                         let mode = 'remove_text';
                         if (actionType === 'image_upscale') mode = 'upscale';
                         if (actionType === 'image_remove_bg') mode = 'remove_bg';
@@ -93,7 +98,7 @@
                         this.controller.visible = true; // Mark window as visible
                     }
                     break;
-                
+
                 case 'translate':
                 case 'explain':
                 case 'summarize':
@@ -129,46 +134,34 @@
                     this.actions.handleRetry();
                     break;
 
-                case 'cancel_ask':
-                    this.actions.handleCancel();
-                    this.ui.hideAskWindow();
-                    this.controller.visible = false;
-                    this.controller.lastSessionId = null;
+                case 'continue_ask':
+                    this.actions.handleContinue();
                     break;
 
-                case 'stop_ask':
-                    this.actions.handleCancel();
-                    this.ui.stopLoading();
-                    break;
-
-                case 'continue_chat':
-                    this.actions.handleContinueChat(this.controller.lastSessionId);
-                    this.ui.hideAskWindow();
-                    this.controller.visible = false;
-                    this.controller.lastSessionId = null;
-                    break;
+                default:
+                    console.warn('[ToolbarDispatcher] Unknown action:', actionType);
             }
         }
 
-        _handleInsert(text, replace) {
-            if (!this.inputManager.hasSource()) {
-                navigator.clipboard.writeText(text).then(() => {
-                    this.ui.showError("Text copied to clipboard (not in editable field)");
-                }).catch(() => {
-                    this.ui.showError("Cannot insert: not in editable field");
-                });
-                return;
+        _handleInsert(data, replace) {
+            if (!data || !data.text) return;
+
+            const input = this.inputManager.getInput();
+            if (!input) return;
+
+            if (replace) {
+                const start = input.selectionStart ?? input.value.length;
+                const end = input.selectionEnd ?? input.value.length;
+                input.setRangeText(data.text, start, end, 'end');
+            } else {
+                const pos = input.selectionStart ?? input.value.length;
+                input.setRangeText(data.text, pos, pos, 'end');
             }
 
-            const success = this.inputManager.insert(text, replace);
-            if (success) {
-                this.ui.showInsertReplaceButtons(false);
-            } else {
-                this.ui.showError("Failed to insert text");
-            }
+            input.focus();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     }
 
-    // Export to Window
     window.GeminiToolbarDispatcher = ToolbarDispatcher;
 })();
