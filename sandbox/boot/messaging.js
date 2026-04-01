@@ -60,23 +60,17 @@ export class AppMessageBridge {
             return;
         }
         if (action === 'RESTORE_MODEL') {
+            // Only sync the UI — do NOT validate against native select options here.
+            // Validation is done by updateModelList (RESTORE_CONNECTION_SETTINGS) which
+            // has the correct provider-aware option list. RESTORE_MODEL runs after and
+            // just needs to show the correct value without triggering handleModelChange.
             if (this.ui.modelSelect) {
-                const prev = this.ui.modelSelect.value;
                 this.ui.modelSelect.value = payload;
-                // Safety check: if invalid model, fallback
-                if (this.ui.modelSelect.selectedIndex === -1) {
-                    this.ui.modelSelect.value = prev || (this.ui.modelSelect.options.length > 0 ? this.ui.modelSelect.options[0].value : "");
-                    // Force index 0 if still invalid
-                    if (this.ui.modelSelect.selectedIndex === -1 && this.ui.modelSelect.options.length > 0) {
-                        this.ui.modelSelect.selectedIndex = 0;
-                    }
-                }
-                // Sync CustomDropdown without firing its change callback (which saves to storage)
-                if (this.ui.modelDropdown && this.ui.modelDropdown.setValue) {
-                    this.ui.modelDropdown.setValue(this.ui.modelSelect.value);
-                }
-                if (this.resizeFn) this.resizeFn();
             }
+            if (this.ui.modelDropdown && this.ui.modelDropdown.setValue) {
+                this.ui.modelDropdown.setValue(payload);
+            }
+            if (this.resizeFn) this.resizeFn();
             return;
         }
         if (action === 'RESTORE_TEXT_SELECTION') {
