@@ -104,7 +104,11 @@ export class UIController {
                 { val: 'gemini-3-flash-thinking', txt: 'Thinking', desc: 'gemini-3-flash-thinking' },
                 { val: 'gemini-3-pro', txt: '3 Pro', desc: 'gemini-3-pro' }
             ],
-            onSelect: () => {} // selection already synced via native select change event
+            onSelect: () => {}, // UI sync already done via native select change event
+            onChange: (model) => {
+                // Direct save to storage without relying on native select change event chain
+                window.parent.postMessage({ action: 'SAVE_MODEL', payload: model }, '*');
+            }
         });
     }
 

@@ -120,7 +120,6 @@ export class AppController {
     }
 
     handleModelChange(model) {
-        console.log('[DEBUG sidebar handleModelChange] model:', model);
         window.parent.postMessage({ action: 'SAVE_MODEL', payload: model }, '*');
     }
 

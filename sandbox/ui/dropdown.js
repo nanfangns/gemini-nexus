@@ -14,7 +14,9 @@ export class CustomDropdown {
         this.nativeSelect = config.nativeSelect;
         this.options = config.options || []; // [{ val, txt, desc? }]
         this.onSelect = config.onSelect || (() => {});
+        this.onChange = config.onChange || (() => {}); // Called when value actually changes (for model saves)
         this._isOpen = false;
+        this._currentValue = this.nativeSelect?.value || this.options[0]?.val;
 
         this._init();
     }
@@ -140,7 +142,6 @@ export class CustomDropdown {
     }
 
     selectByValue(value) {
-        console.log('[DEBUG dropdown selectByValue] value:', value, 'nativeSelect:', this.nativeSelect?.value);
         // Update active state
         this.dropdown.querySelectorAll('.cd-option').forEach(opt => {
             const isActive = opt.dataset.value === value;
@@ -155,6 +156,12 @@ export class CustomDropdown {
         if (this.nativeSelect) {
             this.nativeSelect.value = value;
             this.nativeSelect.dispatchEvent(new Event('change'));
+        }
+
+        // Fire onChange only if value actually changed (avoids spurious saves on restore)
+        if (value !== this._currentValue) {
+            this._currentValue = value;
+            this.onChange(value);
         }
 
         this.onSelect(value);
