@@ -2,9 +2,10 @@
   "manifest_version": 3,
   "name": "Gemini Nexus",
   "version": "4.2.3",
-  "permissions": ["sidePanel", "storage", "contextMenus", "scripting", "alarms", "debugger", "downloads", "tabs"],
+  "permissions": ["sidePanel", "storage", "contextMenus", "scripting", "alarms", "debugger", "downloads", "tabs", "cookies"],
   "host_permissions": [
     "https://gemini.google.com/*",
+    "https://grok.com/*",
     "<all_urls>"
   ],
   "background": {

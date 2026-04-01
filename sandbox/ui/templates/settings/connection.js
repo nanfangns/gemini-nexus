@@ -17,6 +17,7 @@ export const ConnectionSettingsTemplate = `
                 <div class="cd-option" data-value="openai" role="option" aria-selected="false" tabindex="0"><span class="cd-option-name">OpenAI Compatible API</span></div>
                 <div class="cd-option" data-value="anthropic" role="option" aria-selected="false" tabindex="0"><span class="cd-option-name">Anthropic Messages API (Native)</span></div>
                 <div class="cd-option" data-value="xai" role="option" aria-selected="false" tabindex="0"><span class="cd-option-name">xAI Grok API</span></div>
+                <div class="cd-option" data-value="grok_web" role="option" aria-selected="false" tabindex="0"><span class="cd-option-name">Grok Web (Free, Login Required)</span></div>
             </div>
             <select id="provider-select" style="display:none" aria-label="Select provider">
                 <option value="web">Gemini Web Client (Free)</option>
@@ -24,6 +25,7 @@ export const ConnectionSettingsTemplate = `
                 <option value="openai">OpenAI Compatible API</option>
                 <option value="anthropic">Anthropic Messages API (Native)</option>
                 <option value="xai">xAI Grok API</option>
+                <option value="grok_web">Grok Web (Free, Login Required)</option>
             </select>
         </div>
     </div>

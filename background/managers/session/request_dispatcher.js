@@ -5,6 +5,7 @@ import { sendWebMessage } from '../../../services/providers/web.js';
 import { sendOpenAIMessage } from '../../../services/providers/openai_compatible.js';
 import { sendAnthropicMessage } from '../../../services/providers/anthropic.js';
 import { sendXaiMessage } from '../../../services/providers/xai.js';
+import { grokWebProvider } from '../../../services/providers/grok_web.js';
 import { getHistory } from './history_store.js';
 
 export class RequestDispatcher {
@@ -21,6 +22,8 @@ export class RequestDispatcher {
             return await this._handleAnthropicRequest(request, settings, files, onUpdate, signal);
         } else if (settings.provider === 'xai') {
             return await this._handleXaiRequest(request, settings, files, onUpdate, signal);
+        } else if (settings.provider === 'grok_web') {
+            return await this._handleGrokWebRequest(request, files, onUpdate, signal);
         } else {
             return await this._handleWebRequest(request, files, onUpdate, signal);
         }
@@ -160,6 +163,69 @@ export class RequestDispatcher {
             status: "success",
             context: null
         };
+    }
+
+    async _handleGrokWebRequest(request, files, onUpdate, signal) {
+        // Grok Web uses cookie-based auth from active grok.com session
+        // System instruction is prepended to the message
+        let fullText = request.text;
+        if (request.systemInstruction) {
+            fullText = request.systemInstruction + "\n\n" + fullText;
+        }
+
+        // Get conversation context from request (or use sessionId as conversationId)
+        const conversationId = request.grokConversationId || "";
+        const parentResponseId = request.grokParentResponseId || null;
+        const mode = request.grokMode || 'auto';
+
+        let attemptCount = 0;
+        const maxAttempts = 2;
+
+        while (attemptCount < maxAttempts) {
+            attemptCount++;
+
+            try {
+                const response = await grokWebProvider.sendMessage(
+                    fullText,
+                    conversationId,
+                    parentResponseId,
+                    mode,
+                    signal,
+                    onUpdate
+                );
+
+                return {
+                    action: "GEMINI_REPLY",
+                    text: response.text,
+                    thoughts: null,
+                    images: [],
+                    status: "success",
+                    context: {
+                        grokConversationId: response.conversationId,
+                        grokResponseId: response.responseId
+                    }
+                };
+
+            } catch (err) {
+                const isAuthError = err.message && (
+                    err.message.includes("authentication") ||
+                    err.message.includes("logged in") ||
+                    err.message.includes("401") ||
+                    err.message.includes("403") ||
+                    err.message.includes("Not logged in")
+                );
+
+                if (isAuthError && attemptCount < maxAttempts) {
+                    console.warn(`[Grok Web] Auth error: ${err.message}, retrying...`);
+                    // Force re-fetch cookies
+                    grokWebProvider.resetAuth();
+                    await new Promise(r => setTimeout(r, 1000));
+                    continue;
+                }
+
+                throw err;
+            }
+        }
     }
 
     async _handleWebRequest(request, files, onUpdate, signal) {

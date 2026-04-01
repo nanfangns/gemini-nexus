@@ -54,7 +54,8 @@ export class ConnectionSection {
                     { val: 'official', txt: 'Google Gemini API' },
                     { val: 'openai', txt: 'OpenAI Compatible API' },
                     { val: 'anthropic', txt: 'Anthropic Messages API (Native)' },
-                    { val: 'xai', txt: 'xAI Grok API' }
+                    { val: 'xai', txt: 'xAI Grok API' },
+                    { val: 'grok_web', txt: 'Grok Web (Free, Login Required)' }
                 ],
                 onSelect: (value) => this.updateVisibility(value)
             });
@@ -134,7 +135,8 @@ export class ConnectionSection {
         const { apiKeyContainer, officialFields, openaiFields, anthropicFields, xaiFields } = this.elements;
         if (!apiKeyContainer) return;
 
-        if (provider === 'web') {
+        // grok_web uses cookie auth from browser, no API key needed
+        if (provider === 'web' || provider === 'grok_web') {
             apiKeyContainer.style.display = 'none';
         } else {
             apiKeyContainer.style.display = 'flex';

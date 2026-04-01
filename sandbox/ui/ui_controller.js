@@ -143,6 +143,14 @@ export class UIController {
                     { val: 'grok-3', txt: 'Grok 3', desc: 'grok-3' },
                     { val: 'grok-3-mini', txt: 'Grok 3 Mini', desc: 'grok-3-mini' }
                 ];
+        } else if (provider === 'grok_web') {
+            // Grok Web uses mode selection, not model selection
+            // auto = grok-4, fast = quick mode, expert = deep thinking
+            options = [
+                { val: 'auto', txt: 'Auto (Grok 4)', desc: 'auto - Uses grok-4 with low effort' },
+                { val: 'fast', txt: 'Fast Mode', desc: 'fast - Quick responses' },
+                { val: 'expert', txt: 'Expert Mode', desc: 'expert - Deep thinking' }
+            ];
         } else {
             options = [
                 { val: 'gemini-3-flash', txt: 'Fast', desc: 'gemini-3-flash' },
