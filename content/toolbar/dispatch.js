@@ -153,8 +153,18 @@
                     this.actions.handleRetry();
                     break;
 
+                case 'stop_ask':
+                    this.actions.handleCancel();
+                    break;
+
                 case 'continue_ask':
-                    this.actions.handleContinue();
+                case 'continue_chat':
+                    this.actions.handleContinueChat(this.controller.lastSessionId);
+                    this.ui.hideAskWindow();
+                    break;
+
+                case 'cancel_ask':
+                    this.ui.hideAskWindow();
                     break;
 
                 default:
