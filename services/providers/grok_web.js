@@ -2,233 +2,367 @@
 // services/providers/grok_web.js
 
 /**
- * Sends a message using the Grok.com web interface.
- * Uses cookie-based authentication (extracted from active grok.com session).
- *
- * API Details:
- * - Endpoint: POST https://grok.com/rest/app-chat/conversations/{conversationId}/responses
- * - Auth: Cookie-based (sso, x-signature, x-userid, cf_clearance)
- * - Mode: auto (grok-4), fast (quick), expert (deep thinking)
- * - Response: SSE stream with token-by-token output
+ * Grok Web provider.
+ * Strategy: drive the already logged-in grok.com page DOM instead of replaying private HTTP APIs.
  */
 
-import { fetchGrokCookies, validateGrokCookies } from '../grok_auth.js';
+import { requestGrokCookiesFromContentScript, getGrokAuth, hasGrokAuth, clearGrokAuth } from '../grok_auth.js';
+
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
 
 export class GrokWebProvider {
     constructor() {
         this.authData = null;
+        this._pending = null;
     }
 
-    /**
-     * Ensure we have valid auth cookies.
-     */
     async ensureAuth() {
-        if (!this.authData || !validateGrokCookies(this.authData)) {
-            this.authData = await fetchGrokCookies();
+        const cached = await getGrokAuth();
+        if (cached && hasGrokAuth()) {
+            this.authData = cached;
+            return cached;
         }
-        return this.authData;
+        try {
+            this.authData = await requestGrokCookiesFromContentScript();
+            return this.authData;
+        } catch (e) {
+            throw new Error("Grok authentication failed. Please open grok.com and log in first.");
+        }
     }
 
-    /**
-     * Build browser fingerprint headers for Grok requests.
-     */
-    buildHeaders() {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Origin': 'https://grok.com',
-            'Referer': 'https://grok.com/',
-            'User-Agent': navigator.userAgent,
-        };
-
-        // Add required grok headers
-        const cookieMap = {};
-        if (this.authData?.cookieList) {
-            for (const cookie of this.authData.cookieList) {
-                cookieMap[cookie.name] = cookie.value;
-            }
-        }
-
-        // Add x-statsig-id if available (for tracking)
-        if (cookieMap['x-statsig-id']) {
-            headers['x-statsig-id'] = cookieMap['x-statsig-id'];
-        }
-
-        // Generate x-xai-request-id (UUID4)
-        headers['x-xai-request-id'] = this.generateUUID();
-
-        return headers;
-    }
-
-    /**
-     * Generate a UUID4.
-     */
-    generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-    /**
-     * Send a message to Grok and stream the response.
-     * @param {string} prompt - User message
-     * @param {string} conversationId - Conversation ID (empty for new chat)
-     * @param {string} parentResponseId - Previous AI response ID for context
-     * @param {string} mode - 'auto' | 'fast' | 'expert'
-     * @param {AbortSignal} signal - Abort signal
-     * @param {Function} onUpdate - Callback for streaming updates
-     */
     async sendMessage(prompt, conversationId, parentResponseId, mode = 'auto', signal, onUpdate) {
         await this.ensureAuth();
 
-        const endpoint = conversationId
-            ? `https://grok.com/rest/app-chat/conversations/${conversationId}/responses`
-            : `https://grok.com/rest/app-chat/conversations/responses`;
+        const requestId = generateUUID();
+        console.log('[Grok Web DOM] requestId:', requestId, '| conversationId:', conversationId || '(new)', '| mode:', mode);
 
-        const payload = {
-            message: prompt,
-            parentResponseId: parentResponseId || null,
-            modeId: mode,
-            enableImageGeneration: true,
-            enableImageStreaming: true,
-            imageGenerationCount: 2,
-            deviceEnvInfo: {
-                deviceType: 'DESKTOP',
-                platform: 'WEB',
-                browser: 'Chrome'
-            },
-            toolOverrides: {}
-        };
-
-        console.log('[Grok Web] Sending message to:', endpoint);
-        console.log('[Grok Web] Mode:', mode);
-
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                ...this.buildHeaders(),
-                'Cookie': this.authData.cookies
-            },
-            body: JSON.stringify(payload),
-            signal
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            console.error('[Grok Web] Error response:', text);
-
-            if (response.status === 401 || response.status === 403) {
-                // Auth failed - clear cached auth to force re-fetch
-                this.authData = null;
-                throw new Error("Grok authentication failed. Please ensure you're logged in at grok.com");
+        return new Promise((resolve, reject) => {
+            if (signal?.aborted) {
+                reject(new Error('Request aborted'));
+                return;
             }
 
-            throw new Error(`Grok API Error (${response.status}): ${text.substring(0, 200)}`);
-        }
+            let aborted = false;
+            this._pending = { requestId, onUpdate, resolve, reject, done: false };
 
-        // Parse SSE stream
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-        let fullText = "";
-        let responseId = "";
-        let conversationIdFromResponse = conversationId;
+            const cleanup = () => {
+                aborted = true;
+                this._pending = null;
+            };
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+            if (signal) {
+                signal.addEventListener('abort', () => {
+                    if (!aborted && !this._pending?.done) {
+                        cleanup();
+                        reject(new Error('Request aborted'));
+                    }
+                }, { once: true });
+            }
 
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-
-            // Process line by line (SSE format: each line starts with "data: ")
-            const lines = buffer.split('\n');
-            buffer = lines.pop(); // Keep incomplete line in buffer
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-
-                // SSE format: "data: " prefix
-                let jsonStr = trimmed;
-                if (trimmed.startsWith('data: ')) {
-                    jsonStr = trimmed.substring(6);
+            chrome.tabs.query({ url: '*://grok.com/*' }, (tabs) => {
+                if (aborted) return;
+                if (!tabs || tabs.length === 0) {
+                    cleanup();
+                    reject(new Error('No grok.com tab found'));
+                    return;
                 }
 
-                if (!jsonStr || jsonStr === '[DONE]') continue;
+                const activeTab = tabs.find((tab) => tab.active) || tabs[0];
+                const tabId = activeTab.id;
 
-                try {
-                    const data = JSON.parse(jsonStr);
+                chrome.scripting.executeScript(
+                    {
+                        target: { tabId },
+                        world: 'MAIN',
+                        func: function(rid, promptText) {
+                            var TIMEOUT = 90000;
 
-                    // Extract conversation ID from response
-                    if (data.result?.conversationId) {
-                        conversationIdFromResponse = data.result.conversationId;
-                    }
-
-                    // Extract response ID
-                    if (data.result?.responseId) {
-                        responseId = data.result.responseId;
-                    }
-
-                    // Handle token streaming
-                    if (data.result?.token !== undefined) {
-                        const token = data.result.token;
-                        const isSoftStop = data.result.isSoftStop === true;
-                        const isThinking = data.result.isThinking === true;
-
-                        // Skip empty tokens except for soft stop
-                        if (token || isSoftStop) {
-                            if (!isThinking && token) {
-                                fullText += token;
-                                onUpdate?.(fullText, null);
+                            function post(type, extra) {
+                                var payload = Object.assign({ type: type, requestId: rid }, extra || {});
+                                console.log('[Grok DOM] post', type, payload);
+                                if (typeof window.grokBridgeSendMessage === 'function') {
+                                    try {
+                                        window.grokBridgeSendMessage(payload);
+                                        return;
+                                    } catch (e) {
+                                        console.warn('[Grok DOM] bridge send failed:', e && e.message ? e.message : e);
+                                    }
+                                }
+                                window.postMessage({
+                                    source: 'GEMINI_NEXUS_GROK_PAGE',
+                                    payload: payload
+                                }, '*');
                             }
-                        }
 
-                        // Check for end of stream
-                        if (isSoftStop) {
-                            console.log('[Grok Web] Stream completed');
-                            break;
+                            function cleanupHook() {
+                                if (window.__grokBusyCleanup) {
+                                    try { window.__grokBusyCleanup(); } catch (e) {}
+                                    window.__grokBusyCleanup = null;
+                                }
+                                window.__grokBusy = false;
+                            }
+
+                            if (window.__grokBusy) {
+                                post('GROK_API_ERROR', { error: 'busy' });
+                                return;
+                            }
+                            window.__grokBusy = true;
+
+                            var timer = setTimeout(function() {
+                                cleanupHook();
+                                post('GROK_API_ERROR', { error: 'timeout after ' + TIMEOUT + 'ms' });
+                            }, TIMEOUT);
+
+                            function fail(message) {
+                                clearTimeout(timer);
+                                cleanupHook();
+                                post('GROK_API_ERROR', { error: message });
+                            }
+
+                            function done(fullText) {
+                                clearTimeout(timer);
+                                var conversationId = '';
+                                var responseId = '';
+                                try {
+                                    var url = new URL(window.location.href);
+                                    var match = String(url.pathname || '').match(/\/c\/([^/?#]+)/);
+                                    if (match) conversationId = match[1];
+                                    responseId = url.searchParams.get('rid') || '';
+                                } catch (e) {}
+                                cleanupHook();
+                                post('GROK_API_DONE', {
+                                    text: fullText || '',
+                                    conversationId: conversationId,
+                                    responseId: responseId
+                                });
+                            }
+
+                            function getInput() {
+                                return document.querySelector('.query-bar .ProseMirror[contenteditable="true"]') ||
+                                    document.querySelector('.tiptap.ProseMirror[contenteditable="true"]') ||
+                                    document.querySelector('.ProseMirror[contenteditable="true"]') ||
+                                    document.querySelector('[contenteditable="true"].ProseMirror');
+                            }
+
+                            function getSubmitButton() {
+                                var root = document.querySelector('.query-bar') || document;
+                                return root.querySelector('button[aria-label="提交"]') ||
+                                    root.querySelector('button[type="submit"][aria-label="提交"]') ||
+                                    root.querySelector('button[type="submit"]');
+                            }
+
+                            function getAssistantContents() {
+                                return Array.from(document.querySelectorAll('.response-content-markdown.markdown')).filter(function(el) {
+                                    return !!el.closest('div.items-start');
+                                });
+                            }
+
+                            function getLatestAssistantContent() {
+                                var list = getAssistantContents();
+                                return list.length ? list[list.length - 1] : null;
+                            }
+
+                            var input = getInput();
+                            if (!input) {
+                                fail('Grok input not found');
+                                return;
+                            }
+
+                            var baselineAssistantCount = getAssistantContents().length;
+                            var targetContent = null;
+                            var currentFullText = '';
+                            var stableTimer = null;
+                            var observer = null;
+                            var attachPollTimer = null;
+
+                            function getStopButton() {
+                                var root = document.querySelector('.query-bar') || document;
+                                return root.querySelector('button[aria-label="停止"]') ||
+                                    root.querySelector('button[aria-label="Stop"]');
+                            }
+
+                            function isButtonReady(btn) {
+                                if (!btn) return false;
+                                if (btn.disabled) return false;
+                                if (!btn.offsetParent && btn.getBoundingClientRect().width === 0 && btn.getBoundingClientRect().height === 0) return false;
+                                return true;
+                            }
+
+                            function scheduleCompletionCheck() {
+                                if (stableTimer) clearTimeout(stableTimer);
+                                stableTimer = setTimeout(function() {
+                                    var submitBtn = getSubmitButton();
+                                    var stopBtn = getStopButton();
+                                    var ready = isButtonReady(submitBtn);
+                                    var stopVisible = isButtonReady(stopBtn);
+                                    if (currentFullText && (ready || !stopVisible)) {
+                                        console.log('[Grok DOM] completion: fullText len=' + currentFullText.length + ' btnReady=' + ready + ' stopVisible=' + stopVisible);
+                                        done(currentFullText);
+                                        return;
+                                    }
+                                    console.log('[Grok DOM] poll: fullText len=' + currentFullText.length + ' btnReady=' + ready + ' stopVisible=' + stopVisible + ' btnDisabled=' + (submitBtn && submitBtn.disabled));
+                                    scheduleCompletionCheck();
+                                }, 800);
+                            }
+
+                            function emitIfChanged(nextText) {
+                                nextText = nextText || '';
+                                if (nextText === currentFullText) {
+                                    scheduleCompletionCheck();
+                                    return;
+                                }
+
+                                var delta = nextText.startsWith(currentFullText)
+                                    ? nextText.slice(currentFullText.length)
+                                    : nextText;
+                                currentFullText = nextText;
+
+                                if (!delta.trim()) {
+                                    scheduleCompletionCheck();
+                                    return;
+                                }
+
+                                post('GROK_API_TOKEN', { token: delta, fullText: currentFullText });
+                                scheduleCompletionCheck();
+                            }
+
+                            function startObservingTarget(target) {
+                                if (!target) return false;
+                                targetContent = target;
+                                currentFullText = '';
+
+                                observer = new MutationObserver(function() {
+                                    emitIfChanged((targetContent.innerText || '').trim());
+                                });
+                                observer.observe(targetContent, {
+                                    childList: true,
+                                    subtree: true,
+                                    characterData: true
+                                });
+
+                                emitIfChanged((targetContent.innerText || '').trim());
+                                return true;
+                            }
+
+                            function waitForAssistantTarget() {
+                                var contents = getAssistantContents();
+                                var candidate = contents.length > baselineAssistantCount
+                                    ? contents[contents.length - 1]
+                                    : getLatestAssistantContent();
+
+                                if (candidate && (contents.length > baselineAssistantCount || (candidate.innerText || '').trim())) {
+                                    startObservingTarget(candidate);
+                                    return;
+                                }
+
+                                attachPollTimer = setTimeout(waitForAssistantTarget, 200);
+                            }
+
+                            window.__grokBusyCleanup = function() {
+                                clearTimeout(timer);
+                                if (stableTimer) clearTimeout(stableTimer);
+                                if (attachPollTimer) clearTimeout(attachPollTimer);
+                                if (observer) observer.disconnect();
+                            };
+
+                            try {
+                                input.focus();
+
+                                var selection = window.getSelection && window.getSelection();
+                                if (selection) {
+                                    selection.removeAllRanges();
+                                    var range = document.createRange();
+                                    range.selectNodeContents(input);
+                                    selection.addRange(range);
+                                }
+                                document.execCommand('delete');
+                                document.execCommand('insertText', false, promptText);
+                                input.dispatchEvent(new InputEvent('input', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    data: promptText,
+                                    inputType: 'insertText'
+                                }));
+
+                                setTimeout(function() {
+                                    var submitBtn = getSubmitButton();
+                                    if (!submitBtn) {
+                                        fail('Grok submit button not found');
+                                        return;
+                                    }
+                                    if (submitBtn.disabled) {
+                                        setTimeout(function() {
+                                            var retryBtn = getSubmitButton();
+                                            if (!retryBtn || retryBtn.disabled) {
+                                                fail('Grok submit button is disabled');
+                                                return;
+                                            }
+                                            retryBtn.click();
+                                            waitForAssistantTarget();
+                                            scheduleCompletionCheck();
+                                        }, 300);
+                                        return;
+                                    }
+                                    submitBtn.click();
+                                    waitForAssistantTarget();
+                                    scheduleCompletionCheck();
+                                }, 50);
+                            } catch (e) {
+                                fail(e && e.message ? e.message : 'Failed to drive Grok DOM');
+                            }
+                        },
+                        args: [requestId, prompt]
+                    },
+                    () => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[Grok Web DOM] Inject error:', chrome.runtime.lastError.message);
+                            if (!aborted && this._pending) {
+                                cleanup();
+                                reject(new Error('inject: ' + chrome.runtime.lastError.message));
+                            }
+                        } else {
+                            console.log('[Grok Web DOM] Script injected, waiting for DOM stream...');
                         }
                     }
-
-                    // Handle full model response (final metadata)
-                    if (data.result?.modelResponse) {
-                        const modelResponse = data.result.modelResponse;
-                        if (modelResponse.text) {
-                            fullText = modelResponse.text;
-                        }
-                        if (modelResponse.conversationId) {
-                            conversationIdFromResponse = modelResponse.conversationId;
-                        }
-                    }
-
-                } catch (e) {
-                    // Ignore parse errors for incomplete JSON
-                    if (!e.message.includes('Unexpected end')) {
-                        console.debug('[Grok Web] Parse error:', e.message);
-                    }
-                }
-            }
-        }
-
-        console.log('[Grok Web] Response complete, length:', fullText.length);
-
-        return {
-            text: fullText,
-            conversationId: conversationIdFromResponse,
-            responseId: responseId,
-            status: "success"
-        };
+                );
+            });
+        });
     }
 
-    /**
-     * Reset auth cache (force re-fetch on next request).
-     */
+    handleMessage(message) {
+        if (!this._pending) return;
+        if (message.requestId !== this._pending.requestId) return;
+        const req = this._pending;
+
+        if (message.type === 'GROK_API_TOKEN') {
+            req.onUpdate?.(message.fullText, null);
+        } else if (message.type === 'GROK_API_DONE') {
+            req.done = true;
+            req.resolve({
+                text: message.text || '',
+                conversationId: message.conversationId || '',
+                responseId: message.responseId || '',
+                status: 'success'
+            });
+            this._pending = null;
+        } else if (message.type === 'GROK_API_ERROR') {
+            req.done = true;
+            const errMsg = message.error || message.body || (message.status ? `API ${message.status}` : 'Unknown error');
+            req.reject(new Error(errMsg));
+            this._pending = null;
+        }
+    }
+
     resetAuth() {
         this.authData = null;
+        clearGrokAuth();
     }
 }
 
-// Export singleton instance
 export const grokWebProvider = new GrokWebProvider();

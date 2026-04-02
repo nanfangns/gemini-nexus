@@ -39,6 +39,11 @@
   },
   "content_scripts": [
     {
+      "matches": ["*://grok.com/*"],
+      "js": ["content/grok_cookies.js"],
+      "run_at": "document_start"
+    },
+    {
       "matches": ["<all_urls>"],
       "js": [
         "content/overlay.js", 
