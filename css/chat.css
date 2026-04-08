@@ -1,15 +1,17 @@
 
 /* css/chat.css */
 
-#chat-history { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 80px 20px 0 20px; 
-    padding-bottom: 140px; /* Space for input */
-    display: flex; 
-    flex-direction: column; 
+#chat-history {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 72px;
+    margin-bottom: 124px;
+    padding: 8px 20px 16px 20px;
+    display: flex;
+    flex-direction: column;
     gap: 24px; /* Increased gap for breathing room */
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
 }
 
 /* Wide Layout Overrides */

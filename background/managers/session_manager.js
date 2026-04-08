@@ -79,6 +79,7 @@ export class GeminiSessionManager {
 
     cancelCurrentRequest() {
         if (this.abortController) {
+            console.log('[SessionManager] Cancelling previous request', new Error().stack);
             this.abortController.abort();
             this.abortController = null;
             return true;

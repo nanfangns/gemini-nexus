@@ -31,21 +31,21 @@ export async function getConnectionSettings() {
     // Handle API Key Rotation (Comma separated) for Official Gemini
     if (provider === 'official' && activeApiKey.includes(',')) {
         const keys = activeApiKey.split(',').map(k => k.trim()).filter(k => k);
-        
+
         if (keys.length > 0) {
             let pointer = stored.geminiApiKeyPointer || 0;
-            
+
             // Reset pointer if out of bounds (e.g. keys removed)
             if (typeof pointer !== 'number' || pointer >= keys.length || pointer < 0) {
                 pointer = 0;
             }
-            
+
             activeApiKey = keys[pointer];
-            
+
             // Advance pointer for next call
             const nextPointer = (pointer + 1) % keys.length;
             await chrome.storage.local.set({ geminiApiKeyPointer: nextPointer });
-            
+
             console.log(`[Gemini Nexus] Rotating Official API Key (Index: ${pointer})`);
         }
     } else {
@@ -53,11 +53,15 @@ export async function getConnectionSettings() {
         activeApiKey = activeApiKey.trim();
     }
 
+    const selectedModel = provider === 'official'
+        ? (stored.geminiModel || 'gemini-2.5-flash')
+        : (stored.geminiModel || '');
+
     console.log('[DEBUG getConnectionSettings] stored:', JSON.stringify({provider: provider, model: stored.geminiModel, openaiModel: stored.geminiOpenaiModel, anthropicModel: stored.geminiAnthropicModel, xaiModel: stored.geminiXaiModel}));
     return {
         provider: provider,
-        // Model: always authoritative from storage
-        model: stored.geminiModel || "gemini-2.5-flash",
+        // Model: always authoritative from storage; non-official providers handle their own fallback
+        model: selectedModel,
         // Official
         apiKey: activeApiKey,
         thinkingLevel: stored.geminiThinkingLevel || "low",

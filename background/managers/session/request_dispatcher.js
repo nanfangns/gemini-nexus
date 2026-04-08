@@ -59,11 +59,15 @@ export class RequestDispatcher {
     }
 
     async _handleOpenAIRequest(request, settings, files, onUpdate, signal) {
-        // Always use model from storage (authoritative source) instead of request payload
+        const configuredModels = (settings.openaiModel || '')
+            .split(',')
+            .map(model => model.trim())
+            .filter(Boolean);
+
+        // Always prefer a model that actually belongs to the OpenAI-compatible config.
         let targetModel = settings.model;
-        if (!targetModel || targetModel === 'openai_custom') {
-            const configuredModels = settings.openaiModel ? settings.openaiModel.split(',') : [];
-            targetModel = configuredModels.length > 0 ? configuredModels[0].trim() : "";
+        if (!targetModel || targetModel === 'openai_custom' || !configuredModels.includes(targetModel)) {
+            targetModel = configuredModels[0] || '';
         }
 
         const config = {
