@@ -1,38 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#16213e"/>
+    <!-- 主渐变：活力蓝 -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00d4ff"/>
-      <stop offset="100%" stop-color="#7b2cbf"/>
+    <!-- 手臂渐变 -->
+    <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <!-- 阴影 -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
     </filter>
   </defs>
 
-  <!-- Background rounded square -->
-  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)"/>
+  <!-- 白色圆角背景 -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#ffffff" filter="url(#shadow)"/>
 
-  <!-- Browser window frame -->
-  <rect x="24" y="32" width="80" height="64" rx="8" fill="none" stroke="url(#accent)" stroke-width="3"/>
+  <!-- 浏览器窗口外框 -->
+  <rect x="24" y="28" width="80" height="72" rx="12" fill="url(#mainGrad)" opacity="0.1"/>
+  <rect x="24" y="28" width="80" height="72" rx="12" fill="none" stroke="url(#mainGrad)" stroke-width="3"/>
 
-  <!-- Window header dots -->
-  <circle cx="36" cy="44" r="3" fill="#ff5f56"/>
-  <circle cx="48" cy="44" r="3" fill="#ffbd2e"/>
-  <circle cx="60" cy="44" r="3" fill="#27ca40"/>
+  <!-- 窗口标题栏 -->
+  <rect x="24" y="28" width="80" height="20" rx="12" fill="url(#mainGrad)"/>
+  <rect x="24" y="40" width="80" height="8" fill="url(#mainGrad)"/>
 
-  <!-- AI/Automation cursor pointer -->
-  <path d="M72 56 L88 72 L80 72 L84 84 L76 84 L72 72 L64 72 Z" fill="url(#accent)" filter="url(#glow)"/>
+  <!-- 三个圆点 -->
+  <circle cx="36" cy="38" r="3" fill="#ffffff" opacity="0.9"/>
+  <circle cx="48" cy="38" r="3" fill="#ffffff" opacity="0.6"/>
+  <circle cx="60" cy="38" r="3" fill="#ffffff" opacity="0.4"/>
 
-  <!-- Connection lines representing automation flow -->
-  <path d="M32 88 L48 88" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-  <path d="M56 88 L72 88" stroke="#7b2cbf" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-  <path d="M80 88 L96 88" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <!-- 机械手臂/自动化抓手 -->
+  <!-- 上臂 -->
+  <rect x="76" y="52" width="8" height="24" rx="4" fill="url(#armGrad)" transform="rotate(-30 80 64)"/>
+  <!-- 前臂 -->
+  <rect x="84" y="64" width="8" height="20" rx="4" fill="url(#armGrad)" transform="rotate(15 88 74)"/>
+  <!-- 抓手 -->
+  <path d="M90 82 L94 90 L88 90 Z" fill="#1e40af"/>
+  <circle cx="91" cy="88" r="5" fill="#f59e0b"/>
+
+  <!-- 点击/交互波纹效果 -->
+  <circle cx="72" cy="88" r="8" fill="#f59e0b" opacity="0.3"/>
+  <circle cx="72" cy="88" r="5" fill="#f59e0b"/>
+
+  <!-- 自动化连接线 -->
+  <path d="M32 88 L44 88" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  <path d="M52 88 L64 88" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
 </svg>
