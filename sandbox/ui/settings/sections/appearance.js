@@ -1,6 +1,7 @@
 
 // sandbox/ui/settings/sections/appearance.js
 import { CustomDropdown } from '../../dropdown.js';
+import { t } from '../../../core/i18n.js';
 
 export class AppearanceSection {
     constructor(callbacks) {
@@ -9,6 +10,7 @@ export class AppearanceSection {
         this.dropdowns = {};
         this.queryElements();
         this.bindEvents();
+        this.refreshLabels();
     }
 
     queryElements() {
@@ -36,11 +38,7 @@ export class AppearanceSection {
                 trigger: themeTrigger,
                 dropdown: themeDropdown,
                 nativeSelect: themeSelect,
-                options: [
-                    { val: 'system', txt: 'System Default' },
-                    { val: 'light', txt: 'Light' },
-                    { val: 'dark', txt: 'Dark' }
-                ],
+                options: this.getThemeOptions(),
                 onSelect: (value) => this.fire('onThemeChange', value)
             });
         }
@@ -52,14 +50,13 @@ export class AppearanceSection {
                 trigger: languageTrigger,
                 dropdown: languageDropdown,
                 nativeSelect: languageSelect,
-                options: [
-                    { val: 'system', txt: 'System Default' },
-                    { val: 'en', txt: 'English' },
-                    { val: 'zh', txt: '中文' }
-                ],
+                options: this.getLanguageOptions(),
                 onSelect: (value) => this.fire('onLanguageChange', value)
             });
         }
+
+        this._languageChangeHandler = () => this.refreshLabels();
+        document.addEventListener('gemini-language-changed', this._languageChangeHandler);
 
         // System Theme Listener
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -68,6 +65,37 @@ export class AppearanceSection {
                  this.applyVisualTheme('system');
              }
         });
+    }
+
+    getThemeOptions() {
+        return [
+            { val: 'system', txt: t('systemDefault') },
+            { val: 'light', txt: t('light') },
+            { val: 'dark', txt: t('dark') }
+        ];
+    }
+
+    getLanguageOptions() {
+        return [
+            { val: 'system', txt: t('systemDefault') },
+            { val: 'en', txt: 'English' },
+            { val: 'zh', txt: '中文' }
+        ];
+    }
+
+    refreshLabels() {
+        const themeValue = this.elements.themeSelect?.value || 'system';
+        const languageValue = this.elements.languageSelect?.value || 'system';
+
+        if (this.dropdowns.theme) {
+            this.dropdowns.theme.setOptions(this.getThemeOptions());
+            this.dropdowns.theme.setValue(themeValue);
+        }
+
+        if (this.dropdowns.language) {
+            this.dropdowns.language.setOptions(this.getLanguageOptions());
+            this.dropdowns.language.setValue(languageValue);
+        }
     }
 
     setTheme(theme) {

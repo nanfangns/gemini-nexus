@@ -85,7 +85,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["logo.png", "sandbox/index.html", "libs/*", "lib/network-utils.js"],
+      "resources": ["logo.png", "sandbox/index.html", "assets/*", "libs/*", "lib/network-utils.js"],
       "matches": ["<all_urls>"]
     }
   ],
