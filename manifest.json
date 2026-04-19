@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Gemini Nexus",
+  "name": "AI Browser Automation",
   "version": "4.2.3",
   "permissions": ["sidePanel", "storage", "contextMenus", "scripting", "alarms", "debugger", "downloads", "tabs", "cookies"],
   "host_permissions": [
@@ -20,7 +20,7 @@
     "128": "logo.png"
   },
   "action": {
-    "default_title": "Open Gemini Chat",
+    "default_title": "Open AI Browser Automation",
     "default_icon": "logo.png"
   },
   "commands": {
@@ -29,7 +29,7 @@
         "default": "Alt+S",
         "mac": "Alt+S"
       },
-      "description": "Open Gemini Nexus Sidebar"
+      "description": "Open AI Browser Automation Sidebar"
     }
   },
   "side_panel": {

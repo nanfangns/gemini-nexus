@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#7b2cbf"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)"/>
+
+  <!-- Browser window frame -->
+  <rect x="24" y="32" width="80" height="64" rx="8" fill="none" stroke="url(#accent)" stroke-width="3"/>
+
+  <!-- Window header dots -->
+  <circle cx="36" cy="44" r="3" fill="#ff5f56"/>
+  <circle cx="48" cy="44" r="3" fill="#ffbd2e"/>
+  <circle cx="60" cy="44" r="3" fill="#27ca40"/>
+
+  <!-- AI/Automation cursor pointer -->
+  <path d="M72 56 L88 72 L80 72 L84 84 L76 84 L72 72 L64 72 Z" fill="url(#accent)" filter="url(#glow)"/>
+
+  <!-- Connection lines representing automation flow -->
+  <path d="M32 88 L48 88" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M56 88 L72 88" stroke="#7b2cbf" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M80 88 L96 88" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+</svg>

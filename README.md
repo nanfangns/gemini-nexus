@@ -1,22 +1,22 @@
 <div align="center">
-  <img src="logo.png" width="128" height="128" alt="Gemini Nexus Logo">
-  <h1>Gemini Nexus</h1>
-  <p>一个由 Google Gemini 提供支持的 AI 助手 Chrome 浏览器扩展</p>
+  <img src="logo.svg" width="128" height="128" alt="AI Browser Automation Logo">
+  <h1>AI Browser Automation</h1>
+  <p>AI 驱动的浏览器自动化扩展 —— 用自然语言控制网页</p>
 
   [![][license-badge]][license]
   [![][build-badge]][build]
 
-  [license]: https://github.com/nanfangns/gemini-nexus/blob/master/LICENSE
-  [build]: https://github.com/nanfangns/gemini-nexus/actions
+  [license]: https://github.com/nanfangns/ai-browser-automation/blob/master/LICENSE
+  [build]: https://github.com/nanfangns/ai-browser-automation/actions
   [license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-  [build-badge]: https://img.shields.io/github/actions/workflow/status/nanfangns/gemini-nexus/ci.yml
+  [build-badge]: https://img.shields.io/github/actions/workflow/status/nanfangns/ai-browser-automation/ci.yml
 </div>
 
 ---
 
 ## 关于
 
-Gemini Nexus 将 Google Gemini 模型直接集成到浏览器中，让 AI 能够**直接控制网页**——自动点击按钮、填写表单、导航页面。通过自然语言描述任务，AI 会自动规划步骤并执行浏览器操作。
+AI Browser Automation 将大语言模型直接集成到浏览器中，让 AI 能够**直接控制网页**——自动点击按钮、填写表单、导航页面。通过自然语言描述任务，AI 会自动规划步骤并执行浏览器操作。
 
 > ⚠️ 本项目是基于 [yeahhe365/gemini-nexus](https://github.com/yeahhe365/gemini-nexus) 的二次开发，添加了浏览器自动化控制等功能。
 
@@ -91,8 +91,8 @@ Gemini Nexus 将 Google Gemini 模型直接集成到浏览器中，让 AI 能够
 
 1.  **克隆项目**
     ```bash
-    git clone https://github.com/nanfangns/gemini-nexus.git
-    cd gemini-nexus
+    git clone https://github.com/nanfangns/ai-browser-automation.git
+    cd ai-browser-automation
     ```
 
 2.  **安装依赖**
@@ -114,7 +114,7 @@ Gemini Nexus 将 Google Gemini 模型直接集成到浏览器中，让 AI 能够
 ## 项目架构
 
 ```
-gemini-nexus/
+ai-browser-automation/
 ├── sidepanel/          # 侧边栏聊天界面
 ├── sandbox/            # 安全 iframe 环境（Markdown 渲染）
 ├── content/            # 内容脚本（悬浮工具栏、页面交互）
