@@ -18,7 +18,7 @@
 
   <rect width="128" height="128" fill="#FFFFFF"/>
 
-  <g transform="translate(-5.2 -5.2) scale(1.08)">
+  <g transform="translate(-8.32 -8.32) scale(1.13)">
     <path
       d="M34 28h44c14 0 24 10 24 24v3c0 15-10 25-24 25H46L18 99l7-22c-8-4-13-11-13-22v-3c0-14 10-24 22-24z"
       fill="none"
