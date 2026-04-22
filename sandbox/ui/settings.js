@@ -16,7 +16,14 @@ export class SettingsController {
         this.textSelectionEnabled = true;
         this.imageToolsEnabled = true;
         this.accountIndices = "0";
-        this.customPrompt = "";
+        this.promptState = {
+            customPrompt: "",
+            promptPreset: "custom",
+            activePrompt: "",
+            customPresets: [],
+            customPromptName: "",
+            linkedPresetId: null
+        };
 
         // Connection State
         this.connectionData = {
@@ -39,6 +46,7 @@ export class SettingsController {
             onOpen: () => this.handleOpen(),
             onSave: (data) => this.saveSettings(data),
             onReset: () => this.resetSettings(),
+            onPromptStateChange: (promptState) => this.savePromptState(promptState),
             
             onThemeChange: (theme) => this.setTheme(theme),
             onLanguageChange: (lang) => this.setLanguage(lang),
@@ -81,6 +89,7 @@ export class SettingsController {
         this.view.setToggles(this.textSelectionEnabled, this.imageToolsEnabled);
         this.view.setAccountIndices(this.accountIndices);
         this.view.setConnectionSettings(this.connectionData);
+        this.view.setCustomPrompt(this.promptState);
         
         // Refresh from storage
         requestTextSelectionFromStorage();
@@ -129,8 +138,14 @@ export class SettingsController {
         saveConnectionSettingsToStorage(this.connectionData);
 
         // Custom Prompt
-        this.customPrompt = data.customPrompt || '';
-        saveCustomPromptToStorage(this.customPrompt);
+        this.savePromptState({
+            customPrompt: data.customPrompt,
+            promptPreset: data.promptPreset,
+            activePrompt: data.activePrompt,
+            customPresets: data.customPresets,
+            customPromptName: data.customPromptName,
+            linkedPresetId: data.linkedPresetId
+        });
 
         // Notify app of critical setting changes
         if (this.callbacks.onSettingsChanged) {
@@ -231,8 +246,37 @@ export class SettingsController {
     }
 
     updateCustomPrompt(prompt) {
-        this.customPrompt = prompt || "";
-        this.view.setCustomPrompt(this.customPrompt);
+        this.promptState = this.normalizePromptState(prompt);
+        this.view.setCustomPrompt(this.promptState);
+    }
+
+    savePromptState(promptState) {
+        this.promptState = this.normalizePromptState(promptState);
+        saveCustomPromptToStorage(this.promptState);
+    }
+
+    normalizePromptState(prompt) {
+        if (typeof prompt === 'string') {
+            return {
+                customPrompt: prompt,
+                promptPreset: 'custom',
+                activePrompt: prompt,
+                customPresets: [],
+                customPromptName: "",
+                linkedPresetId: null
+            };
+        }
+
+        return {
+            customPrompt: prompt && typeof prompt.customPrompt === 'string' ? prompt.customPrompt : "",
+            promptPreset: prompt && typeof prompt.promptPreset === 'string' ? prompt.promptPreset : 'custom',
+            activePrompt: prompt && typeof prompt.activePrompt === 'string'
+                ? prompt.activePrompt
+                : (prompt && typeof prompt.customPrompt === 'string' ? prompt.customPrompt : ""),
+            customPresets: Array.isArray(prompt?.customPresets) ? prompt.customPresets : [],
+            customPromptName: prompt && typeof prompt.customPromptName === 'string' ? prompt.customPromptName : "",
+            linkedPresetId: prompt && typeof prompt.linkedPresetId === 'string' ? prompt.linkedPresetId : null
+        };
     }
 
     async fetchGithubData() {

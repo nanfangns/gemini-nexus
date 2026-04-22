@@ -127,10 +127,30 @@ export class MessageBridge {
             return;
         }
         if (action === 'GET_CUSTOM_PROMPT') {
-            chrome.storage.local.get(['geminiCustomPrompt'], (res) => {
+            chrome.storage.local.get([
+                'geminiCustomPrompt',
+                'geminiCustomPromptState',
+                'geminiCustomPromptPreset',
+                'geminiCustomPromptCustom'
+            ], (res) => {
+                const promptState = res.geminiCustomPromptState && typeof res.geminiCustomPromptState === 'object'
+                    ? res.geminiCustomPromptState
+                    : {
+                        customPrompt: typeof res.geminiCustomPromptCustom === 'string' ? res.geminiCustomPromptCustom : "",
+                        promptPreset: typeof res.geminiCustomPromptPreset === 'string' ? res.geminiCustomPromptPreset : 'custom',
+                        activePrompt: typeof res.geminiCustomPrompt === 'string' ? res.geminiCustomPrompt : "",
+                        customPresets: [],
+                        customPromptName: "",
+                        linkedPresetId: null
+                    };
+
+                if ((!promptState.activePrompt || typeof promptState.activePrompt !== 'string') && typeof res.geminiCustomPrompt === 'string') {
+                    promptState.activePrompt = res.geminiCustomPrompt;
+                }
+
                 this.frame.postMessage({
                     action: 'RESTORE_CUSTOM_PROMPT',
-                    payload: res.geminiCustomPrompt || ""
+                    payload: promptState
                 });
             });
             return;
@@ -165,7 +185,36 @@ export class MessageBridge {
             this.state.save('geminiXaiModel', payload.xaiModel);
         }
         if (action === 'SAVE_CUSTOM_PROMPT') {
-            this.state.save('geminiCustomPrompt', payload);
+            const promptState = payload && typeof payload === 'object'
+                ? payload
+                : {
+                    customPrompt: typeof payload === 'string' ? payload : "",
+                    promptPreset: 'custom',
+                    activePrompt: typeof payload === 'string' ? payload : ""
+                };
+
+            const customPrompt = typeof promptState.customPrompt === 'string'
+                ? promptState.customPrompt
+                : "";
+            const promptPreset = typeof promptState.promptPreset === 'string'
+                ? promptState.promptPreset
+                : 'custom';
+            const activePrompt = typeof promptState.activePrompt === 'string'
+                ? promptState.activePrompt
+                : (promptPreset === 'custom' ? customPrompt : "");
+            const normalizedPromptState = {
+                customPrompt,
+                promptPreset,
+                activePrompt,
+                customPresets: Array.isArray(promptState.customPresets) ? promptState.customPresets : [],
+                customPromptName: typeof promptState.customPromptName === 'string' ? promptState.customPromptName : "",
+                linkedPresetId: typeof promptState.linkedPresetId === 'string' ? promptState.linkedPresetId : null
+            };
+
+            this.state.save('geminiCustomPrompt', activePrompt);
+            this.state.save('geminiCustomPromptState', normalizedPromptState);
+            this.state.save('geminiCustomPromptPreset', promptPreset);
+            this.state.save('geminiCustomPromptCustom', customPrompt);
         }
     }
 

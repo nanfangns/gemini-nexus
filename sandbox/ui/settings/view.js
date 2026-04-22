@@ -28,7 +28,9 @@ export class SettingsView {
 
         this.shortcuts = new ShortcutsSection();
 
-        this.prompt = new PromptSection();
+        this.prompt = new PromptSection({
+            onStateChange: (state) => this.fire('onPromptStateChange', state)
+        });
 
         this.about = new AboutSection({
             onDownloadLogs: () => this.fire('onDownloadLogs')
@@ -84,7 +86,12 @@ export class SettingsView {
             textSelection: generalData.textSelection,
             imageTools: generalData.imageTools,
             accountIndices: generalData.accountIndices,
-            customPrompt: promptData.customPrompt
+            customPrompt: promptData.customPrompt,
+            promptPreset: promptData.promptPreset,
+            activePrompt: promptData.activePrompt,
+            customPresets: promptData.customPresets,
+            customPromptName: promptData.customPromptName,
+            linkedPresetId: promptData.linkedPresetId
         };
 
         this.fire('onSave', data);
@@ -148,7 +155,7 @@ export class SettingsView {
 
     // Delegation to Prompt
     setCustomPrompt(prompt) {
-        this.prompt.setData({ customPrompt: prompt });
+        this.prompt.setData(prompt);
     }
 
     // Delegation to About
