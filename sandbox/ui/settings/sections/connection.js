@@ -1,6 +1,8 @@
 
 // sandbox/ui/settings/sections/connection.js
 import { CustomDropdown } from '../../dropdown.js';
+import { showToast, showConfirm, showPrompt } from '../../dialogs.js';
+import { t } from '../../../core/i18n.js';
 
 function _uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -162,12 +164,12 @@ export class ConnectionSection {
 
     // ── profile actions ───────────────────────────────────────────────────
 
-    _addProfile(protocol) {
+    async _addProfile(protocol) {
         this._syncFieldsToProfile(protocol);
         const list = this.profiles[protocol];
         const idx  = list.length + 1;
         const defaultName = `${idx}`;
-        const input = prompt('Channel name:', defaultName);
+        const input = await showPrompt(t('channelNamePrompt'), { defaultValue: defaultName, placeholder: t('channelNamePlaceholder') });
         // user cancelled or empty → use default
         const name = (input && input.trim()) || defaultName;
 
@@ -179,10 +181,10 @@ export class ConnectionSection {
         this._loadProfileToFields(protocol);
     }
 
-    _renameProfile(protocol) {
+    async _renameProfile(protocol) {
         const p = this._getActiveProfile(protocol);
         if (!p) return;
-        const input = prompt('Rename channel:', p.name);
+        const input = await showPrompt(t('channelRenamePrompt'), { defaultValue: p.name });
         if (input === null) return; // cancelled
         const name = input.trim();
         if (!name) return;
@@ -190,13 +192,13 @@ export class ConnectionSection {
         this._renderProfileSelector(protocol);
     }
 
-    _deleteProfile(protocol) {
+    async _deleteProfile(protocol) {
         const list = this.profiles[protocol];
         if (list.length <= 1) return;
 
         const target = this._getActiveProfile(protocol);
         if (!target) return;
-        if (!confirm(`Delete "${target.name}"?`)) return;
+        if (!await showConfirm(t('deleteProfileConfirm').replace('{name}', target.name), { danger: true })) return;
 
         this._syncFieldsToProfile(protocol);
         const idx = list.findIndex(p => p.id === target.id);
@@ -384,21 +386,21 @@ export class ConnectionSection {
             baseUrl = openaiBaseUrl ? openaiBaseUrl.value.trim() : '';
             apiKey = openaiApiKey ? openaiApiKey.value.trim() : '';
             modelInput = openaiModel;
-            if (!baseUrl) return alert('Please enter the Base URL first.');
-            if (!apiKey) return alert('Please enter the API Key first.');
+            if (!baseUrl) return showToast(t('enterBaseUrl'), 'error');
+            if (!apiKey) return showToast(t('enterApiKey'), 'error');
             headers = { 'Authorization': `Bearer ${apiKey}` };
         } else if (provider === 'anthropic') {
             baseUrl = anthropicBaseUrl ? anthropicBaseUrl.value.trim() : '';
             apiKey = anthropicApiKey ? anthropicApiKey.value.trim() : '';
             modelInput = anthropicModel;
-            if (!baseUrl) return alert('Please enter the Base URL first.');
-            if (!apiKey) return alert('Please enter the API Key first.');
+            if (!baseUrl) return showToast(t('enterBaseUrl'), 'error');
+            if (!apiKey) return showToast(t('enterApiKey'), 'error');
             headers = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
         } else if (provider === 'xai') {
             baseUrl = 'https://api.x.ai/v1';
             apiKey = xaiApiKey ? xaiApiKey.value.trim() : '';
             modelInput = xaiModel;
-            if (!apiKey) return alert('Please enter the API Key first.');
+            if (!apiKey) return showToast(t('enterApiKey'), 'error');
             headers = { 'Authorization': `Bearer ${apiKey}` };
         }
 
@@ -418,11 +420,11 @@ export class ConnectionSection {
             btn.disabled = false;
 
             if (error) {
-                alert(`Failed to fetch models: ${error}`);
+                showToast(t('fetchModelsError').replace('{error}', error), 'error');
                 return;
             }
             if (!models || models.length === 0) {
-                alert('No models returned by the API.');
+                showToast(t('fetchModelsEmpty'), 'error');
                 return;
             }
             if (modelInput) modelInput.value = models.join(', ');
@@ -436,7 +438,7 @@ export class ConnectionSection {
             window.removeEventListener('message', onResult);
             btn.classList.remove('loading');
             btn.disabled = false;
-            alert('Failed to fetch models: timeout (no response from background)');
+            showToast(t('fetchModelsTimeout'), 'error');
         }, 15000);
 
         // Send request to background via sidepanel bridge (no new imports needed)

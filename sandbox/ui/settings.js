@@ -1,7 +1,8 @@
 
 // sandbox/ui/settings.js
 import { saveShortcutsToStorage, saveThemeToStorage, requestThemeFromStorage, saveLanguageToStorage, requestLanguageFromStorage, saveTextSelectionToStorage, requestTextSelectionFromStorage, saveSidebarBehaviorToStorage, saveImageToolsToStorage, requestImageToolsFromStorage, saveAccountIndicesToStorage, requestAccountIndicesFromStorage, saveConnectionSettingsToStorage, requestConnectionSettingsFromStorage, saveCustomPromptToStorage, requestCustomPromptFromStorage, sendToBackground } from '../../lib/messaging.js';
-import { setLanguagePreference, getLanguagePreference } from '../core/i18n.js';
+import { setLanguagePreference, getLanguagePreference, t } from '../core/i18n.js';
+import { showToast } from './dialogs.js';
 import { SettingsView } from './settings/view.js';
 import { DEFAULT_SHORTCUTS } from '../../lib/constants.js';
 
@@ -168,7 +169,7 @@ export class SettingsController {
     
     saveLogFile(logs) {
         if (!logs || logs.length === 0) {
-            alert("No logs to download.");
+            showToast(t('noLogs'), 'info');
             return;
         }
         

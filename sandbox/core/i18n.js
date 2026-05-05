@@ -137,6 +137,27 @@ export const translations = {
         "deleteSelected": "Delete",
         "deleteBatchConfirm": "Delete {count} selected chats?",
         "batchNoSelection": "Please select at least one chat.",
+
+        // Dialog system
+        "confirmTitle": "Confirm",
+        "confirm": "OK",
+        "cancel": "Cancel",
+
+        // Channel / Profile
+        "channelNamePrompt": "Channel name:",
+        "channelNamePlaceholder": "Enter channel name",
+        "channelRenamePrompt": "Rename channel:",
+        "deleteProfileConfirm": "Delete \"{name}\"?",
+
+        // Fetch Models
+        "enterBaseUrl": "Please enter the Base URL first.",
+        "enterApiKey": "Please enter the API Key first.",
+        "fetchModelsError": "Failed to fetch models: {error}",
+        "fetchModelsEmpty": "No models returned by the API.",
+        "fetchModelsTimeout": "Failed to fetch models: timeout (no response from background)",
+
+        // Misc
+        "noLogs": "No logs to download.",
     },
     zh: {
         "searchPlaceholder": "搜索对话",
@@ -273,6 +294,27 @@ export const translations = {
         "deleteSelected": "删除",
         "deleteBatchConfirm": "确定删除选中的 {count} 个对话？",
         "batchNoSelection": "请至少选择一个对话。",
+
+        // Dialog system
+        "confirmTitle": "确认",
+        "confirm": "确定",
+        "cancel": "取消",
+
+        // Channel / Profile
+        "channelNamePrompt": "渠道名称：",
+        "channelNamePlaceholder": "输入渠道名称",
+        "channelRenamePrompt": "重命名渠道：",
+        "deleteProfileConfirm": "删除「{name}」？",
+
+        // Fetch Models
+        "enterBaseUrl": "请先填写 Base URL。",
+        "enterApiKey": "请先填写 API Key。",
+        "fetchModelsError": "获取模型列表失败：{error}",
+        "fetchModelsEmpty": "API 未返回任何模型。",
+        "fetchModelsTimeout": "获取模型列表失败：超时无响应",
+
+        // Misc
+        "noLogs": "没有可下载的日志。",
     }
 };
 

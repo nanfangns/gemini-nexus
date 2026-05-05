@@ -1,6 +1,7 @@
 
 // ui_sidebar.js -> sandbox/ui/sidebar.js
 import { t } from '../core/i18n.js';
+import { showToast, showConfirm } from './dialogs.js';
 
 export class SidebarController {
     constructor(elements, callbacks) {
@@ -152,16 +153,16 @@ export class SidebarController {
             currentList.length > 0 && currentList.every(s => this.selectedIds.has(s.id));
     }
 
-    executeBatchDelete() {
+    async executeBatchDelete() {
         if (this.selectedIds.size === 0) {
-            alert(t('batchNoSelection'));
+            showToast(t('batchNoSelection'), 'info');
             return;
         }
 
         if (!this.itemCallbacks || !this.itemCallbacks.onDeleteBatch) return;
 
         const count = this.selectedIds.size;
-        if (confirm(t('deleteBatchConfirm').replace('{count}', count))) {
+        if (await showConfirm(t('deleteBatchConfirm').replace('{count}', count), { danger: true })) {
             const ids = [...this.selectedIds];
             this.exitBatchMode();
             this.itemCallbacks.onDeleteBatch(ids);
@@ -271,9 +272,9 @@ export class SidebarController {
                 delBtn.className = 'history-delete';
                 delBtn.textContent = '✕';
                 delBtn.title = t('delete');
-                delBtn.onclick = (e) => {
+                delBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    if(confirm(t('deleteChatConfirm'))) {
+                    if(await showConfirm(t('deleteChatConfirm'), { danger: true })) {
                         this.itemCallbacks.onDelete(s.id);
                     }
                 };

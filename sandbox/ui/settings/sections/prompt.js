@@ -1,6 +1,7 @@
 import { PROMPT_PRESETS } from '../../templates/settings/prompt.js';
 import { CustomDropdown } from '../../dropdown.js';
 import { t } from '../../../core/i18n.js';
+import { showToast, showConfirm } from '../../dialogs.js';
 
 const DEFAULT_PROMPT_PRESET = 'custom';
 const BUILTIN_PRESET_KEYS = ['brutal', 'untrammelled'];
@@ -293,13 +294,13 @@ export class PromptSection {
         }
     }
 
-    handleSavePreset() {
+    async handleSavePreset() {
         const { promptInput, presetNameInput } = this.elements;
         if (!promptInput || !presetNameInput) return;
 
         const name = presetNameInput.value.trim();
         if (!name) {
-            alert(t('promptPresetNameRequired'));
+            showToast(t('promptPresetNameRequired'), 'error');
             return;
         }
 
@@ -321,7 +322,7 @@ export class PromptSection {
         }
 
         if (sameNamePreset && (!targetPreset || sameNamePreset.id !== targetPreset.id)) {
-            if (!confirm(t('promptSavePresetOverwriteConfirm'))) {
+            if (!await showConfirm(t('promptSavePresetOverwriteConfirm'))) {
                 return;
             }
             targetPreset = sameNamePreset;
@@ -351,23 +352,23 @@ export class PromptSection {
         this.fire('onStateChange', this.getData());
     }
 
-    handleDeletePreset() {
+    async handleDeletePreset() {
         if (!this.isUserPresetKey(this.selectedPreset)) {
             if (this.selectedPreset === DEFAULT_PROMPT_PRESET) {
-                alert(t('promptDeleteSelectCustom'));
+                showToast(t('promptDeleteSelectCustom'), 'info');
             } else {
-                alert(t('promptPresetBuiltinDeleteBlocked'));
+                showToast(t('promptPresetBuiltinDeleteBlocked'), 'error');
             }
             return;
         }
 
         const preset = this.getUserPresetByKey(this.selectedPreset);
         if (!preset) {
-            alert(t('promptDeleteSelectCustom'));
+            showToast(t('promptDeleteSelectCustom'), 'info');
             return;
         }
 
-        if (!confirm(t('promptDeletePresetConfirm'))) {
+        if (!await showConfirm(t('promptDeletePresetConfirm'), { danger: true })) {
             return;
         }
 
