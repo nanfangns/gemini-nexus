@@ -36,8 +36,8 @@ export class MessageBridge {
         if (action === 'FORWARD_TO_BACKGROUND') {
             chrome.runtime.sendMessage(payload)
                 .then(response => {
-                    // If request demands a reply (e.g., GET_LOGS, CHECK_PAGE_CONTEXT), send it back
-                    if (response && (payload.action === 'GET_LOGS' || payload.action === 'CHECK_PAGE_CONTEXT')) {
+                    // Forward any response back to the sandbox frame
+                    if (response) {
                         this.frame.postMessage({
                             action: 'BACKGROUND_MESSAGE',
                             payload: response

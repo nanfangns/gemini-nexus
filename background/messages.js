@@ -28,6 +28,24 @@ export function setupMessageListener(sessionManager, imageHandler, controlManage
             return true;
         }
 
+        // --- FETCH MODELS (called from settings to list available models) ---
+        if (request.action === 'FETCH_MODELS') {
+            const { url, headers } = request;
+            fetch(url, { headers })
+                .then(res => {
+                    if (!res.ok) return res.text().then(t => { throw new Error(`HTTP ${res.status}: ${t.slice(0, 200)}`); });
+                    return res.json();
+                })
+                .then(json => {
+                    const models = (json.data || []).map(m => m.id).filter(Boolean).sort();
+                    sendResponse({ models, error: null });
+                })
+                .catch(err => {
+                    sendResponse({ models: [], error: err.message });
+                });
+            return true; // async response
+        }
+
         // Delegate to Session Handler (Prompt, Context, Quick Ask, Browser Control)
         if (sessionHandler.handle(request, sender, sendResponse)) {
             return true;
