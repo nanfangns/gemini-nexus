@@ -42,6 +42,9 @@ export class ConnectionSection {
         const { providerWrapper, providerTrigger, providerDropdown, providerSelect,
                 thinkingWrapper, thinkingTrigger, thinkingDropdown, thinkingSelect } = this.elements;
 
+        // API key visibility toggles
+        this._bindKeyToggles();
+
         // Provider dropdown
         if (providerWrapper && providerTrigger && providerDropdown && providerSelect) {
             this.dropdowns.provider = new CustomDropdown({
@@ -145,5 +148,27 @@ export class ConnectionSection {
             if (anthropicFields) anthropicFields.style.display = provider === 'anthropic' ? 'flex' : 'none';
             if (xaiFields) xaiFields.style.display = provider === 'xai' ? 'flex' : 'none';
         }
+    }
+
+    _bindKeyToggles() {
+        const apiInputs = [
+            this.elements.apiKeyInput,
+            this.elements.openaiApiKey,
+            this.elements.anthropicApiKey,
+            this.elements.xaiApiKey
+        ];
+
+        apiInputs.forEach(input => {
+            if (!input) return;
+            const wrapper = input.closest('.api-key-wrapper');
+            const toggle = wrapper ? wrapper.querySelector('.api-key-toggle') : null;
+            if (!toggle) return;
+
+            toggle.addEventListener('click', () => {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                toggle.classList.toggle('visible', isPassword);
+            });
+        });
     }
 }

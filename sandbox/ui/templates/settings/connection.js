@@ -35,7 +35,13 @@ export const ConnectionSettingsTemplate = `
         <div id="official-fields" style="display: none; flex-direction: column; gap: 12px;">
             <div>
                 <label data-i18n="apiKey" style="font-weight: 500; display: block; margin-bottom: 2px;">API Key</label>
-                <input type="password" id="api-key-input" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="apiKeyPlaceholder" placeholder="Paste your Gemini API Key">
+                <div class="api-key-wrapper">
+                    <input type="password" id="api-key-input" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="apiKeyPlaceholder" placeholder="Paste your Gemini API Key">
+                    <button type="button" class="api-key-toggle" aria-label="Show API Key">
+                        <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
             </div>
             <div>
                 <label style="font-weight: 500; display: block; margin-bottom: 6px;">Thinking Level</label>
@@ -68,7 +74,13 @@ export const ConnectionSettingsTemplate = `
             </div>
             <div>
                 <label data-i18n="apiKey" style="font-weight: 500; display: block; margin-bottom: 2px;">API Key</label>
-                <input type="password" id="openai-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-...">
+                <div class="api-key-wrapper">
+                    <input type="password" id="openai-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-...">
+                    <button type="button" class="api-key-toggle" aria-label="Show API Key">
+                        <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
             </div>
             <div>
                 <label style="font-weight: 500; display: block; margin-bottom: 2px;">Model IDs (Comma separated)</label>
@@ -84,7 +96,13 @@ export const ConnectionSettingsTemplate = `
             </div>
             <div>
                 <label data-i18n="apiKey" style="font-weight: 500; display: block; margin-bottom: 2px;">API Key</label>
-                <input type="password" id="anthropic-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" placeholder="sk-ant-...">
+                <div class="api-key-wrapper">
+                    <input type="password" id="anthropic-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" placeholder="sk-ant-...">
+                    <button type="button" class="api-key-toggle" aria-label="Show API Key">
+                        <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
             </div>
             <div>
                 <label style="font-weight: 500; display: block; margin-bottom: 2px;">Model IDs (Comma separated)</label>
@@ -96,7 +114,13 @@ export const ConnectionSettingsTemplate = `
         <div id="xai-fields" style="display: none; flex-direction: column; gap: 12px;">
             <div>
                 <label style="font-weight: 500; display: block; margin-bottom: 2px;">API Key</label>
-                <input type="password" id="xai-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" placeholder="xai-...">
+                <div class="api-key-wrapper">
+                    <input type="password" id="xai-api-key" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" placeholder="xai-...">
+                    <button type="button" class="api-key-toggle" aria-label="Show API Key">
+                        <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
                 <span style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px; display: block;">Get your key from <a href="https://console.x.ai" target="_blank" style="color: var(--accent);">console.x.ai</a></span>
             </div>
             <div>

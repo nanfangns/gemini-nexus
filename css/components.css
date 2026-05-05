@@ -322,6 +322,51 @@
     background: var(--bg-input-focus);
     box-shadow: 0 0 0 2px rgba(11, 87, 208, 0.1);
 }
+
+/* API Key visibility toggle */
+.api-key-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.api-key-wrapper .shortcut-input {
+    padding-right: 36px;
+}
+
+.api-key-toggle {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.api-key-toggle:hover {
+    color: var(--text-primary);
+    background: var(--btn-hover);
+}
+
+.api-key-toggle .eye-closed {
+    display: none;
+}
+
+.api-key-toggle.visible .eye-open {
+    display: none;
+}
+
+.api-key-toggle.visible .eye-closed {
+    display: block;
+}
 .shortcut-static {
     font-size: 13px;
     color: var(--text-tertiary);
