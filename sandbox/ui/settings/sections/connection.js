@@ -372,7 +372,7 @@ export class ConnectionSection {
         });
     }
 
-    async _fetchModels(btn) {
+    _fetchModels(btn) {
         const provider = btn.dataset.provider;
         const { openaiBaseUrl, openaiApiKey, openaiModel,
                 anthropicBaseUrl, anthropicApiKey, anthropicModel,
@@ -406,26 +406,44 @@ export class ConnectionSection {
         btn.classList.add('loading');
         btn.disabled = true;
 
-        try {
-            const res = await fetch(url, { headers });
-            if (!res.ok) {
-                const errBody = await res.text();
-                throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 200)}`);
-            }
-            const json = await res.json();
-            const models = (json.data || []).map(m => m.id).filter(Boolean).sort();
-            if (models.length === 0) throw new Error('No models returned by the API.');
-            if (modelInput) modelInput.value = models.join(', ');
+        // Listen for background response (routed through sidepanel bridge)
+        let timer;
+        const onResult = (e) => {
+            if (e.data?.action !== 'BACKGROUND_MESSAGE') return;
+            const { models, error } = e.data.payload || {};
+            clearTimeout(timer);
+            window.removeEventListener('message', onResult);
 
             btn.classList.remove('loading');
+            btn.disabled = false;
+
+            if (error) {
+                alert(`Failed to fetch models: ${error}`);
+                return;
+            }
+            if (!models || models.length === 0) {
+                alert('No models returned by the API.');
+                return;
+            }
+            if (modelInput) modelInput.value = models.join(', ');
             btn.classList.add('success');
             setTimeout(() => btn.classList.remove('success'), 1800);
-        } catch (err) {
+        };
+        window.addEventListener('message', onResult);
+
+        // Timeout fallback if bridge doesn't forward response
+        timer = setTimeout(() => {
+            window.removeEventListener('message', onResult);
             btn.classList.remove('loading');
-            alert(`Failed to fetch models: ${err.message}`);
-        } finally {
             btn.disabled = false;
-        }
+            alert('Failed to fetch models: timeout (no response from background)');
+        }, 15000);
+
+        // Send request to background via sidepanel bridge (no new imports needed)
+        window.parent.postMessage({
+            action: 'FORWARD_TO_BACKGROUND',
+            payload: { action: 'FETCH_MODELS', url, headers }
+        }, '*');
     }
 
     // ── key visibility toggles (unchanged) ────────────────────────────────
