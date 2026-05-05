@@ -1,7 +1,6 @@
 
 // sandbox/ui/settings/sections/connection.js
 import { CustomDropdown } from '../../dropdown.js';
-import { sendToBackground } from '../../../lib/messaging.js';
 
 function _uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -373,7 +372,7 @@ export class ConnectionSection {
         });
     }
 
-    _fetchModels(btn) {
+    async _fetchModels(btn) {
         const provider = btn.dataset.provider;
         const { openaiBaseUrl, openaiApiKey, openaiModel,
                 anthropicBaseUrl, anthropicApiKey, anthropicModel,
@@ -407,30 +406,26 @@ export class ConnectionSection {
         btn.classList.add('loading');
         btn.disabled = true;
 
-        // Listen for the background response (only once)
-        const onResult = (e) => {
-            if (e.data?.action !== 'BACKGROUND_MESSAGE') return;
-            const { models, error } = e.data.payload || {};
-            window.removeEventListener('message', onResult);
+        try {
+            const res = await fetch(url, { headers });
+            if (!res.ok) {
+                const errBody = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+            }
+            const json = await res.json();
+            const models = (json.data || []).map(m => m.id).filter(Boolean).sort();
+            if (models.length === 0) throw new Error('No models returned by the API.');
+            if (modelInput) modelInput.value = models.join(', ');
 
             btn.classList.remove('loading');
-            btn.disabled = false;
-
-            if (error) {
-                alert(`Failed to fetch models: ${error}`);
-                return;
-            }
-            if (!models || models.length === 0) {
-                alert('No models returned by the API.');
-                return;
-            }
-            if (modelInput) modelInput.value = models.join(', ');
             btn.classList.add('success');
             setTimeout(() => btn.classList.remove('success'), 1800);
-        };
-        window.addEventListener('message', onResult);
-
-        sendToBackground({ action: 'FETCH_MODELS', url, headers });
+        } catch (err) {
+            btn.classList.remove('loading');
+            alert(`Failed to fetch models: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+        }
     }
 
     // ── key visibility toggles (unchanged) ────────────────────────────────
