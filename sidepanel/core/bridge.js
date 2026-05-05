@@ -103,7 +103,9 @@ export class MessageBridge {
                 'geminiAnthropicModel',
                 'geminiXaiApiKey',
                 'geminiXaiModel',
-                'geminiModel'
+                'geminiModel',
+                'geminiProviderProfiles',
+                'geminiActiveProfileIds'
             ], (res) => {
                 this.frame.postMessage({
                     action: 'RESTORE_CONNECTION_SETTINGS',
@@ -120,7 +122,9 @@ export class MessageBridge {
                         anthropicModel: res.geminiAnthropicModel || "",
                         xaiApiKey: res.geminiXaiApiKey || "",
                         xaiModel: res.geminiXaiModel || "",
-                        savedModel: res.geminiModel || null
+                        savedModel: res.geminiModel || null,
+                        providerProfiles: res.geminiProviderProfiles || [],
+                        activeProfileIds: res.geminiActiveProfileIds || { openai: null, anthropic: null }
                     }
                 });
             });
@@ -172,17 +176,20 @@ export class MessageBridge {
             this.state.save('geminiUseOfficialApi', payload.provider === 'official'); // Maintain legacy bool for now
             this.state.save('geminiApiKey', payload.apiKey);
             this.state.save('geminiThinkingLevel', payload.thinkingLevel);
-            // OpenAI
+            // OpenAI (flatten active profile)
             this.state.save('geminiOpenaiBaseUrl', payload.openaiBaseUrl);
             this.state.save('geminiOpenaiApiKey', payload.openaiApiKey);
             this.state.save('geminiOpenaiModel', payload.openaiModel);
-            // Anthropic
+            // Anthropic (flatten active profile)
             this.state.save('geminiAnthropicBaseUrl', payload.anthropicBaseUrl);
             this.state.save('geminiAnthropicApiKey', payload.anthropicApiKey);
             this.state.save('geminiAnthropicModel', payload.anthropicModel);
             // xAI
             this.state.save('geminiXaiApiKey', payload.xaiApiKey);
             this.state.save('geminiXaiModel', payload.xaiModel);
+            // Profiles (full state)
+            this.state.save('geminiProviderProfiles', payload.providerProfiles || []);
+            this.state.save('geminiActiveProfileIds', payload.activeProfileIds || { openai: null, anthropic: null });
         }
         if (action === 'SAVE_CUSTOM_PROMPT') {
             const promptState = payload && typeof payload === 'object'

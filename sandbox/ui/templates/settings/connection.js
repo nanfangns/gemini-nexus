@@ -68,6 +68,18 @@ export const ConnectionSettingsTemplate = `
 
         <!-- OpenAI Fields -->
         <div id="openai-fields" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="profile-selector-row">
+                <span class="profile-selector-label">Channel</span>
+                <div class="profile-selector-controls">
+                    <select id="openai-profile-select" class="profile-select" aria-label="Select OpenAI profile"></select>
+                    <button type="button" id="openai-profile-add" class="profile-action-btn" title="Add profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button type="button" id="openai-profile-del" class="profile-action-btn" title="Delete profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            </div>
             <div>
                 <label data-i18n="baseUrl" style="font-weight: 500; display: block; margin-bottom: 2px;">Base URL</label>
                 <input type="text" id="openai-base-url" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="baseUrlPlaceholder" placeholder="https://api.openai.com/v1">
@@ -95,6 +107,18 @@ export const ConnectionSettingsTemplate = `
 
         <!-- Anthropic Fields -->
         <div id="anthropic-fields" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="profile-selector-row">
+                <span class="profile-selector-label">Channel</span>
+                <div class="profile-selector-controls">
+                    <select id="anthropic-profile-select" class="profile-select" aria-label="Select Anthropic profile"></select>
+                    <button type="button" id="anthropic-profile-add" class="profile-action-btn" title="Add profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button type="button" id="anthropic-profile-del" class="profile-action-btn" title="Delete profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            </div>
             <div>
                 <label data-i18n="baseUrl" style="font-weight: 500; display: block; margin-bottom: 2px;">Base URL</label>
                 <input type="text" id="anthropic-base-url" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" placeholder="https://api.anthropic.com/v1">

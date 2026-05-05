@@ -38,7 +38,9 @@ export class SettingsController {
             anthropicApiKey: "",
             anthropicModel: "",
             xaiApiKey: "",
-            xaiModel: ""
+            xaiModel: "",
+            providerProfiles: [],
+            activeProfileIds: { openai: null, anthropic: null }
         };
 
         // Initialize View
@@ -132,7 +134,9 @@ export class SettingsController {
             anthropicApiKey: data.connection.anthropicApiKey,
             anthropicModel: data.connection.anthropicModel,
             xaiApiKey: data.connection.xaiApiKey,
-            xaiModel: data.connection.xaiModel
+            xaiModel: data.connection.xaiModel,
+            providerProfiles: data.connection.providerProfiles || [],
+            activeProfileIds: data.connection.activeProfileIds || { openai: null, anthropic: null }
         };
         
         saveConnectionSettingsToStorage(this.connectionData);
