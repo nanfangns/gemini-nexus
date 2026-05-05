@@ -44,12 +44,14 @@ export class ConnectionSection {
             openaiProfileSelect: get('openai-profile-select'),
             openaiProfileAdd: get('openai-profile-add'),
             openaiProfileDel: get('openai-profile-del'),
+            openaiProfileRename: get('openai-profile-rename'),
             anthropicBaseUrl: get('anthropic-base-url'),
             anthropicApiKey: get('anthropic-api-key'),
             anthropicModel: get('anthropic-model'),
             anthropicProfileSelect: get('anthropic-profile-select'),
             anthropicProfileAdd: get('anthropic-profile-add'),
             anthropicProfileDel: get('anthropic-profile-del'),
+            anthropicProfileRename: get('anthropic-profile-rename'),
             xaiApiKey: get('xai-api-key'),
             xaiModel: get('xai-model'),
         };
@@ -164,12 +166,28 @@ export class ConnectionSection {
         this._syncFieldsToProfile(protocol);
         const list = this.profiles[protocol];
         const idx  = list.length + 1;
-        const p    = { id: _uid(), name: `${idx}`, baseUrl: '', apiKey: '', model: '' };
+        const defaultName = `${idx}`;
+        const input = prompt('Channel name:', defaultName);
+        // user cancelled or empty → use default
+        const name = (input && input.trim()) || defaultName;
+
+        const p = { id: _uid(), name, baseUrl: '', apiKey: '', model: '' };
         list.push(p);
         this.activeProfileIds[protocol] = p.id;
 
         this._renderProfileSelector(protocol);
         this._loadProfileToFields(protocol);
+    }
+
+    _renameProfile(protocol) {
+        const p = this._getActiveProfile(protocol);
+        if (!p) return;
+        const input = prompt('Rename channel:', p.name);
+        if (input === null) return; // cancelled
+        const name = input.trim();
+        if (!name) return;
+        p.name = name;
+        this._renderProfileSelector(protocol);
     }
 
     _deleteProfile(protocol) {
@@ -201,13 +219,15 @@ export class ConnectionSection {
 
     _bindProfileSelectors() {
         ['openai', 'anthropic'].forEach(protocol => {
-            const selectEl = this.elements[`${protocol}ProfileSelect`];
-            const addBtn   = this.elements[`${protocol}ProfileAdd`];
-            const delBtn   = this.elements[`${protocol}ProfileDel`];
+            const selectEl  = this.elements[`${protocol}ProfileSelect`];
+            const addBtn    = this.elements[`${protocol}ProfileAdd`];
+            const delBtn    = this.elements[`${protocol}ProfileDel`];
+            const renameBtn = this.elements[`${protocol}ProfileRename`];
 
-            if (selectEl) selectEl.addEventListener('change', () => this._switchProfile(protocol, selectEl.value));
-            if (addBtn)   addBtn.addEventListener('click',   () => this._addProfile(protocol));
-            if (delBtn)   delBtn.addEventListener('click',   () => this._deleteProfile(protocol));
+            if (selectEl)  selectEl.addEventListener('change',  () => this._switchProfile(protocol, selectEl.value));
+            if (addBtn)    addBtn.addEventListener('click',    () => this._addProfile(protocol));
+            if (delBtn)    delBtn.addEventListener('click',    () => this._deleteProfile(protocol));
+            if (renameBtn) renameBtn.addEventListener('click', () => this._renameProfile(protocol));
         });
     }
 
