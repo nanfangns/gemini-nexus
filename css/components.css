@@ -367,6 +367,63 @@
 .api-key-toggle.visible .eye-closed {
     display: block;
 }
+
+/* Model input with fetch button */
+.model-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-input-row .shortcut-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.fetch-models-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.fetch-models-btn:hover {
+    border-color: var(--accent, #1a73e8);
+    color: var(--accent, #1a73e8);
+    background: var(--btn-hover);
+}
+
+.fetch-models-btn:active {
+    transform: scale(0.95);
+}
+
+.fetch-models-btn.loading svg {
+    animation: spin 0.8s linear infinite;
+}
+
+.fetch-models-btn.success {
+    border-color: #188038;
+    color: #188038;
+}
+
+[data-theme="dark"] .fetch-models-btn.success {
+    color: #81c995;
+    border-color: #81c995;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .shortcut-static {
     font-size: 13px;
     color: var(--text-tertiary);

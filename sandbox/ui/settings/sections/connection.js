@@ -45,6 +45,9 @@ export class ConnectionSection {
         // API key visibility toggles
         this._bindKeyToggles();
 
+        // Fetch models buttons
+        this._bindFetchModels();
+
         // Provider dropdown
         if (providerWrapper && providerTrigger && providerDropdown && providerSelect) {
             this.dropdowns.provider = new CustomDropdown({
@@ -147,6 +150,73 @@ export class ConnectionSection {
             if (openaiFields) openaiFields.style.display = provider === 'openai' ? 'flex' : 'none';
             if (anthropicFields) anthropicFields.style.display = provider === 'anthropic' ? 'flex' : 'none';
             if (xaiFields) xaiFields.style.display = provider === 'xai' ? 'flex' : 'none';
+        }
+    }
+
+    _bindFetchModels() {
+        document.querySelectorAll('.fetch-models-btn').forEach(btn => {
+            btn.addEventListener('click', () => this._fetchModels(btn));
+        });
+    }
+
+    async _fetchModels(btn) {
+        const provider = btn.dataset.provider;
+        const { openaiBaseUrl, openaiApiKey, openaiModel,
+                anthropicBaseUrl, anthropicApiKey, anthropicModel,
+                xaiApiKey, xaiModel } = this.elements;
+
+        let baseUrl, apiKey, modelInput, headers;
+
+        if (provider === 'openai') {
+            baseUrl = openaiBaseUrl ? openaiBaseUrl.value.trim() : '';
+            apiKey = openaiApiKey ? openaiApiKey.value.trim() : '';
+            modelInput = openaiModel;
+            if (!baseUrl) return alert('Please enter the Base URL first.');
+            if (!apiKey) return alert('Please enter the API Key first.');
+            headers = { 'Authorization': `Bearer ${apiKey}` };
+        } else if (provider === 'anthropic') {
+            baseUrl = anthropicBaseUrl ? anthropicBaseUrl.value.trim() : '';
+            apiKey = anthropicApiKey ? anthropicApiKey.value.trim() : '';
+            modelInput = anthropicModel;
+            if (!baseUrl) return alert('Please enter the Base URL first.');
+            if (!apiKey) return alert('Please enter the API Key first.');
+            headers = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+        } else if (provider === 'xai') {
+            baseUrl = 'https://api.x.ai/v1';
+            apiKey = xaiApiKey ? xaiApiKey.value.trim() : '';
+            modelInput = xaiModel;
+            if (!apiKey) return alert('Please enter the API Key first.');
+            headers = { 'Authorization': `Bearer ${apiKey}` };
+        }
+
+        const url = `${baseUrl.replace(/\/+$/, '')}/models`;
+
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(url, { headers });
+            if (!res.ok) {
+                const errBody = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+            }
+            const json = await res.json();
+            const models = (json.data || []).map(m => m.id).filter(Boolean).sort();
+
+            if (models.length === 0) {
+                throw new Error('No models returned by the API.');
+            }
+
+            if (modelInput) modelInput.value = models.join(', ');
+
+            btn.classList.remove('loading');
+            btn.classList.add('success');
+            setTimeout(() => btn.classList.remove('success'), 1800);
+        } catch (err) {
+            btn.classList.remove('loading');
+            alert(`Failed to fetch models: ${err.message}`);
+        } finally {
+            btn.disabled = false;
         }
     }
 
