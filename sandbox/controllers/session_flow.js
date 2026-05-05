@@ -60,7 +60,8 @@ export class SessionFlowController {
             this.sessionManager.currentSessionId,
             {
                 onSwitch: (id) => this.switchToSession(id),
-                onDelete: (id) => this.handleDeleteSession(id)
+                onDelete: (id) => this.handleDeleteSession(id),
+                onDeleteBatch: (ids) => this.handleDeleteBatch(ids)
             }
         );
     }
@@ -68,13 +69,36 @@ export class SessionFlowController {
     handleDeleteSession(sessionId) {
         const switchNeeded = this.sessionManager.deleteSession(sessionId);
         saveSessionsToStorage(this.sessionManager.sessions);
-        
+
         if (switchNeeded) {
             if (this.sessionManager.sessions.length > 0) {
                 this.switchToSession(this.sessionManager.currentSessionId);
             } else {
                 this.handleNewChat();
             }
+        } else {
+            this.refreshHistoryUI();
+        }
+    }
+
+    handleDeleteBatch(ids) {
+        const idSet = new Set(ids);
+        const currentDeleted = idSet.has(this.sessionManager.currentSessionId);
+
+        this.sessionManager.sessions = this.sessionManager.sessions.filter(s => !idSet.has(s.id));
+
+        if (currentDeleted) {
+            this.sessionManager.currentSessionId = this.sessionManager.sessions.length > 0
+                ? this.sessionManager.sessions[0].id
+                : null;
+        }
+
+        saveSessionsToStorage(this.sessionManager.sessions);
+
+        if (this.sessionManager.sessions.length === 0) {
+            this.handleNewChat();
+        } else if (currentDeleted) {
+            this.switchToSession(this.sessionManager.currentSessionId);
         } else {
             this.refreshHistoryUI();
         }

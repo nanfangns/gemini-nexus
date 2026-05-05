@@ -122,6 +122,37 @@ body.layout-wide .sidebar-overlay {
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.batch-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.batch-toggle-btn:hover {
+    background: var(--btn-hover);
+    color: var(--text-primary);
+}
+
+.batch-toggle-btn.active {
+    background: #d3e3fd;
+    color: #041e49;
+}
+
+[data-theme="dark"] .batch-toggle-btn.active {
+    background: #004a77;
+    color: #c2e7ff;
 }
 
 /* History List */
@@ -155,6 +186,91 @@ body.layout-wide .sidebar-overlay {
     height: auto;
     min-height: 36px;
     position: relative;
+}
+
+/* Batch mode checkbox */
+.history-item .batch-cb {
+    display: none;
+    margin-right: 10px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    accent-color: #1a73e8;
+    cursor: pointer;
+}
+
+.sidebar.batch-mode .history-item {
+    cursor: default;
+}
+
+.sidebar.batch-mode .history-item .history-delete {
+    display: none;
+}
+
+.sidebar.batch-mode .history-item .batch-cb {
+    display: block;
+}
+
+.sidebar.batch-mode .history-item .history-title {
+    max-width: 220px;
+}
+
+/* Batch Action Bar */
+.batch-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.batch-select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.batch-select-all input[type="checkbox"] {
+    accent-color: #1a73e8;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.batch-delete-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: transparent;
+    border: 1px solid #c5221f;
+    border-radius: 20px;
+    color: #c5221f;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.batch-delete-btn:hover {
+    background: #c5221f;
+    color: #fff;
+}
+
+[data-theme="dark"] .batch-delete-btn {
+    border-color: #f28b82;
+    color: #f28b82;
+}
+
+[data-theme="dark"] .batch-delete-btn:hover {
+    background: #5c1e1a;
+    color: #ffb4ab;
 }
 
 .history-item:hover { 

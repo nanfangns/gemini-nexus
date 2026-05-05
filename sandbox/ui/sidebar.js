@@ -9,10 +9,16 @@ export class SidebarController {
         this.listEl = elements.historyListEl;
         this.toggleBtn = elements.historyToggleBtn;
         this.closeBtn = elements.closeSidebarBtn;
-        
+
         // Search Elements
         this.searchInput = document.getElementById('history-search');
-        
+
+        // Batch delete elements
+        this.batchToggleBtn = document.getElementById('batch-toggle-btn');
+        this.batchActionBar = document.getElementById('batch-action-bar');
+        this.batchSelectAllCb = document.getElementById('batch-select-all-cb');
+        this.batchDeleteBtn = document.getElementById('batch-delete-btn');
+
         this.callbacks = callbacks || {};
 
         // State for search
@@ -20,6 +26,10 @@ export class SidebarController {
         this.currentSessionId = null;
         this.itemCallbacks = null;
         this.fuse = null;
+
+        // Batch mode state
+        this.batchMode = false;
+        this.selectedIds = new Set();
 
         this.initListeners();
     }
@@ -42,12 +52,23 @@ export class SidebarController {
         if (this.searchInput) {
             this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
         }
+
+        // Batch mode listeners
+        if (this.batchToggleBtn) {
+            this.batchToggleBtn.addEventListener('click', () => this.toggleBatchMode());
+        }
+        if (this.batchSelectAllCb) {
+            this.batchSelectAllCb.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
+        }
+        if (this.batchDeleteBtn) {
+            this.batchDeleteBtn.addEventListener('click', () => this.executeBatchDelete());
+        }
     }
 
     toggle() {
         if (this.sidebar) this.sidebar.classList.toggle('open');
         if (this.overlay) this.overlay.classList.toggle('visible');
-        
+
         // Auto-focus search if opening
         if (this.sidebar && this.sidebar.classList.contains('open') && this.searchInput) {
             setTimeout(() => this.searchInput.focus(), 100);
@@ -57,6 +78,94 @@ export class SidebarController {
     close() {
         if (this.sidebar) this.sidebar.classList.remove('open');
         if (this.overlay) this.overlay.classList.remove('visible');
+        this.exitBatchMode();
+    }
+
+    toggleBatchMode() {
+        this.batchMode = !this.batchMode;
+        this.selectedIds.clear();
+
+        if (this.batchMode) {
+            this.sidebar.classList.add('batch-mode');
+            if (this.batchActionBar) this.batchActionBar.style.display = '';
+            if (this.batchSelectAllCb) this.batchSelectAllCb.checked = false;
+            if (this.batchToggleBtn) this.batchToggleBtn.classList.add('active');
+        } else {
+            this.exitBatchMode();
+        }
+
+        this._renderDOM(
+            this.searchInput && this.searchInput.value.trim()
+                ? this.fuse ? this.fuse.search(this.searchInput.value).map(r => r.item) : this.allSessions
+                : this.allSessions
+        );
+    }
+
+    exitBatchMode() {
+        this.batchMode = false;
+        this.selectedIds.clear();
+        if (this.sidebar) this.sidebar.classList.remove('batch-mode');
+        if (this.batchActionBar) this.batchActionBar.style.display = 'none';
+        if (this.batchToggleBtn) this.batchToggleBtn.classList.remove('active');
+    }
+
+    toggleSelectAll(checked) {
+        if (!this.itemCallbacks) return;
+        const currentList = this._getCurrentDisplayList();
+        if (checked) {
+            currentList.forEach(s => this.selectedIds.add(s.id));
+        } else {
+            this.selectedIds.clear();
+        }
+        this._updateCheckboxes();
+    }
+
+    toggleItemSelection(id, checked) {
+        if (checked) {
+            this.selectedIds.add(id);
+        } else {
+            this.selectedIds.delete(id);
+        }
+        this._syncSelectAllState();
+    }
+
+    _getCurrentDisplayList() {
+        if (this.searchInput && this.searchInput.value.trim() && this.fuse) {
+            return this.fuse.search(this.searchInput.value).map(r => r.item);
+        }
+        return this.allSessions;
+    }
+
+    _updateCheckboxes() {
+        if (!this.listEl) return;
+        const boxes = this.listEl.querySelectorAll('.batch-cb');
+        boxes.forEach(cb => {
+            cb.checked = this.selectedIds.has(cb.dataset.sessionId);
+        });
+        this._syncSelectAllState();
+    }
+
+    _syncSelectAllState() {
+        if (!this.batchSelectAllCb) return;
+        const currentList = this._getCurrentDisplayList();
+        this.batchSelectAllCb.checked =
+            currentList.length > 0 && currentList.every(s => this.selectedIds.has(s.id));
+    }
+
+    executeBatchDelete() {
+        if (this.selectedIds.size === 0) {
+            alert(t('batchNoSelection'));
+            return;
+        }
+
+        if (!this.itemCallbacks || !this.itemCallbacks.onDeleteBatch) return;
+
+        const count = this.selectedIds.size;
+        if (confirm(t('deleteBatchConfirm').replace('{count}', count))) {
+            const ids = [...this.selectedIds];
+            this.exitBatchMode();
+            this.itemCallbacks.onDeleteBatch(ids);
+        }
     }
 
     _initSearch() {
@@ -128,6 +237,7 @@ export class SidebarController {
             const item = document.createElement('div');
             item.className = `history-item ${s.id === this.currentSessionId ? 'active' : ''}`;
             item.onclick = () => {
+                if (this.batchMode) return;
                 this.itemCallbacks.onSwitch(s.id);
                 // On mobile or small screens, maybe auto-close sidebar?
                 // Keeping current behavior: explicit close required or select closes
@@ -135,24 +245,43 @@ export class SidebarController {
                     this.close();
                 }
             };
-            
+
+            // Batch mode checkbox
+            if (this.batchMode) {
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'batch-cb';
+                cb.dataset.sessionId = s.id;
+                cb.checked = this.selectedIds.has(s.id);
+                cb.onclick = (e) => e.stopPropagation();
+                cb.addEventListener('change', (e) => {
+                    this.toggleItemSelection(s.id, e.target.checked);
+                });
+                item.appendChild(cb);
+            }
+
             const titleSpan = document.createElement('span');
             titleSpan.className = 'history-title';
             titleSpan.textContent = s.title;
-            
-            const delBtn = document.createElement('span');
-            delBtn.className = 'history-delete';
-            delBtn.textContent = '✕';
-            delBtn.title = t('delete');
-            delBtn.onclick = (e) => {
-                e.stopPropagation();
-                if(confirm(t('deleteChatConfirm'))) {
-                    this.itemCallbacks.onDelete(s.id);
-                }
-            };
 
-            item.appendChild(titleSpan);
-            item.appendChild(delBtn);
+            if (this.batchMode) {
+                item.appendChild(titleSpan);
+            } else {
+                const delBtn = document.createElement('span');
+                delBtn.className = 'history-delete';
+                delBtn.textContent = '✕';
+                delBtn.title = t('delete');
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if(confirm(t('deleteChatConfirm'))) {
+                        this.itemCallbacks.onDelete(s.id);
+                    }
+                };
+
+                item.appendChild(titleSpan);
+                item.appendChild(delBtn);
+            }
+
             this.listEl.appendChild(item);
         });
     }

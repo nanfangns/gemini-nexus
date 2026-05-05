@@ -132,6 +132,11 @@ export const translations = {
         "noTabsFound": "No open tabs found.",
         "lockTab": "Lock Tab",
         "unlockTab": "Unlock Tab (Auto-follow Active)",
+        "selectMode": "Select",
+        "selectAll": "Select All",
+        "deleteSelected": "Delete",
+        "deleteBatchConfirm": "Delete {count} selected chats?",
+        "batchNoSelection": "Please select at least one chat.",
     },
     zh: {
         "searchPlaceholder": "搜索对话",
@@ -263,6 +268,11 @@ export const translations = {
         "noTabsFound": "未找到打开的标签页。",
         "lockTab": "锁定标签页",
         "unlockTab": "解锁 (自动跟随活动标签页)",
+        "selectMode": "选择",
+        "selectAll": "全选",
+        "deleteSelected": "删除",
+        "deleteBatchConfirm": "确定删除选中的 {count} 个对话？",
+        "batchNoSelection": "请至少选择一个对话。",
     }
 };
 
