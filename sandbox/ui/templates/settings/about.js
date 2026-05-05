@@ -25,11 +25,11 @@ export const AboutSettingsTemplate = `
         </div>
         <div class="about-title-block">
             <div class="about-title-row">
-                <h3 class="about-name">Gemini Nexus</h3>
+                <h3 class="about-name">AI Browser Automation</h3>
                 <span id="app-current-version" class="about-version">v4.2.3</span>
                 <span id="app-update-status" class="about-update"></span>
             </div>
-            <p class="about-desc">AI-powered browser automation powered by Google Gemini</p>
+            <p class="about-desc">AI-powered browser automation</p>
         </div>
     </div>
 
