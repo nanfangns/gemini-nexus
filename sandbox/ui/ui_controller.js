@@ -145,7 +145,9 @@ export class UIController {
                 ];
         } else if (provider === 'doubao_web') {
             options = [
-                { val: 'doubao-default', txt: 'Doubao', desc: 'doubao-default' }
+                { val: 'doubao-default', txt: '快速', desc: 'doubao-default' },
+                { val: 'doubao-think', txt: '思考', desc: 'doubao-think' },
+                { val: 'doubao-expert', txt: '专家', desc: 'doubao-expert' }
             ];
         } else {
             options = [

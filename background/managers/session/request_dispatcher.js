@@ -23,7 +23,7 @@ export class RequestDispatcher {
         } else if (settings.provider === 'xai') {
             return await this._handleXaiRequest(request, settings, files, onUpdate, signal);
         } else if (settings.provider === 'doubao_web') {
-            return await this._handleDoubaoWebRequest(request, files, onUpdate, signal);
+            return await this._handleDoubaoWebRequest(request, settings, files, onUpdate, signal);
         } else {
             return await this._handleWebRequest(request, files, onUpdate, signal);
         }
@@ -169,10 +169,15 @@ export class RequestDispatcher {
         };
     }
 
-    async _handleDoubaoWebRequest(request, files, onUpdate, signal) {
+    async _handleDoubaoWebRequest(request, settings, files, onUpdate, signal) {
         let fullText = request.text;
         if (request.systemInstruction) {
             fullText = request.systemInstruction + "\n\n" + fullText;
+        }
+
+        let targetModel = settings.model || request.model || 'doubao-default';
+        if (!['doubao-default', 'doubao-think', 'doubao-expert'].includes(targetModel)) {
+            targetModel = 'doubao-default';
         }
 
         let attemptCount = 0;
@@ -185,16 +190,18 @@ export class RequestDispatcher {
                 const response = await doubaoWebProvider.sendMessage(
                     fullText,
                     request.doubaoConversationId || '',
+                    request.doubaoSectionId || '',
                     request.doubaoReplyMessageId || '',
                     files,
                     signal,
-                    onUpdate
+                    onUpdate,
+                    targetModel
                 );
 
                 return {
                     action: "GEMINI_REPLY",
                     text: response.text,
-                    thoughts: null,
+                    thoughts: response.thoughts,
                     images: [],
                     status: "success",
                     context: response.context

@@ -255,7 +255,11 @@
                     opts = models.map(m => ({ val: m, txt: m }));
                 }
             } else if (provider === 'doubao_web') {
-                opts = [{ val: 'doubao-default', txt: 'Doubao' }];
+                opts = [
+                    { val: 'doubao-default', txt: '快速' },
+                    { val: 'doubao-think', txt: '思考' },
+                    { val: 'doubao-expert', txt: '专家' }
+                ];
             } else {
                 opts = [
                     { val: 'gemini-3-flash', txt: 'Fast' },

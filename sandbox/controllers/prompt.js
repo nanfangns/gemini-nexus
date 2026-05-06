@@ -71,6 +71,9 @@ export class PromptController {
             if (session.context.doubaoConversationId) {
                 requestPayload.doubaoConversationId = session.context.doubaoConversationId;
             }
+            if (session.context.doubaoSectionId) {
+                requestPayload.doubaoSectionId = session.context.doubaoSectionId;
+            }
             if (session.context.doubaoReplyMessageId) {
                 requestPayload.doubaoReplyMessageId = session.context.doubaoReplyMessageId;
             }

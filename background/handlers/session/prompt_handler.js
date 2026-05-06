@@ -83,6 +83,7 @@ export class PromptHandler {
                     if (pageContextChanged) {
                         await this.sessionManager.resetContext({ rotateAccount: false });
                         delete request.doubaoConversationId;
+                        delete request.doubaoSectionId;
                         delete request.doubaoReplyMessageId;
                     }
 
