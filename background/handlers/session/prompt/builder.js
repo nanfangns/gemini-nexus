@@ -4,8 +4,9 @@ import { getActiveTabContextData } from '../utils.js';
 import { BROWSER_CONTROL_PREAMBLE } from './preamble.js';
 
 export class PromptBuilder {
-    constructor(controlManager) {
+    constructor(controlManager, mcpManager) {
         this.controlManager = controlManager;
+        this.mcpManager = mcpManager || null;
     }
 
     async build(request) {
@@ -24,7 +25,7 @@ export class PromptBuilder {
             const targetTabId = this.controlManager ? this.controlManager.getTargetTabId() : null;
             const pageContext = await getActiveTabContextData(targetTabId);
             const pageContent = pageContext ? pageContext.content : null;
-            
+
             if (pageContent) {
                 pageContextMeta = {
                     url: pageContext.url || '',
@@ -66,7 +67,7 @@ export class PromptBuilder {
                             url = tab.url;
                         } catch (e) { }
                     }
-                    
+
                     // Fallback to active tab if no locked tab or lookup failed
                     if (!url) {
                         const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -78,9 +79,8 @@ export class PromptBuilder {
                     }
 
                     // 2. Inject Snapshot (Accessibility Tree) - Only on first turn
-                    // This jump-starts the model without it needing to call take_snapshot first, saving a turn.
                     const isFirst = await this._isFirstTurn(request.sessionId);
-                    
+
                     if (isFirst) {
                         const snapshot = await this.controlManager.getSnapshot();
                         if (snapshot && typeof snapshot === 'string' && !snapshot.startsWith('Error')) {
@@ -91,6 +91,28 @@ export class PromptBuilder {
                 } catch (e) {
                     console.warn("Auto-Injection failed:", e);
                 }
+            }
+        }
+
+        // --- External MCP Tools (Remote Servers) ---
+        if (request.enableMcpTools) {
+            // If browser control is NOT enabled, teach the model the tool-call format
+            if (!request.enableBrowserControl) {
+                systemPreamble += `[System: Tooling Enabled]\n`;
+                systemPreamble += `You may call tools when helpful.\n\n`;
+                systemPreamble += `**Output Format:**\n`;
+                systemPreamble += `To use a tool, output a **single** JSON block at the end of your response:\n`;
+                systemPreamble += `\`\`\`json\n{ "tool": "tool_name", "args": { ... } }\n\`\`\`\n\n`;
+            }
+
+            if (this.mcpManager) {
+                try {
+                    systemPreamble += await this.mcpManager.buildToolsPreamble(request);
+                } catch (e) {
+                    systemPreamble += `[External MCP Tools Error]: ${e.message}\n\n`;
+                }
+            } else {
+                systemPreamble += `[External MCP Tools Error]: MCP manager not available.\n\n`;
             }
         }
 
@@ -119,17 +141,16 @@ export class PromptBuilder {
      * Checks if this is the first turn of the conversation (no AI replies yet).
      */
     async _isFirstTurn(sessionId) {
-        if (!sessionId) return true; // No session ID implies new/ephemeral request
+        if (!sessionId) return true;
         try {
             const { geminiSessions = [] } = await chrome.storage.local.get(['geminiSessions']);
             const session = geminiSessions.find(s => s.id === sessionId);
             if (!session) return true;
-            
-            // If there are no AI responses yet, this is the first turn being processed
+
             const hasAiResponse = session.messages.some(m => m.role === 'ai');
             return !hasAiResponse;
         } catch (e) {
-            return true; // Default to true on error to be safe
+            return true;
         }
     }
 }

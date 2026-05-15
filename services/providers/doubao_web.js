@@ -16,16 +16,34 @@ function generateUUID() {
 
 function resolveDoubaoMode(model) {
     if (model === 'doubao-think') {
-        return { useDeepThink: '1', needDeepThink: 1 };
+        return {
+            route: 'samantha',
+            useDeepThink: '1',
+            needDeepThink: 1,
+            useAutoCot: false,
+            useSamanthaChat: true
+        };
     }
     if (model === 'doubao-expert') {
-        return { useDeepThink: '3', needDeepThink: 0 };
+        return {
+            route: 'legacy',
+            useDeepThink: '3',
+            needDeepThink: 3,
+            useAutoCot: false,
+            useSamanthaChat: false
+        };
     }
-    return { useDeepThink: '0', needDeepThink: 0 };
+    return {
+        route: 'legacy',
+        useDeepThink: '0',
+        needDeepThink: 0,
+        useAutoCot: false,
+        useSamanthaChat: false
+    };
 }
 
-function buildCompletionUrl(auth) {
-    const url = new URL('https://www.doubao.com/chat/completion');
+function buildCompletionUrl(auth, path = '/chat/completion') {
+    const url = new URL(`https://www.doubao.com${path}`);
     url.searchParams.set('aid', auth.aid || DOUBAO_AID);
     url.searchParams.set('device_id', auth.deviceId);
     url.searchParams.set('device_platform', 'web');
@@ -45,7 +63,7 @@ function buildCompletionUrl(auth) {
     return url.toString();
 }
 
-async function buildPayload(prompt, conversationId, sectionId, replyMessageId, fp, files, model) {
+async function buildLegacyPayload(prompt, conversationId, sectionId, replyMessageId, fp, files, model) {
     const localConversationId = conversationId || `local_${Date.now()}`;
     const localMessageId = generateUUID();
     const contentBlocks = [];
@@ -156,11 +174,55 @@ async function buildPayload(prompt, conversationId, sectionId, replyMessageId, f
         },
         ext: {
             use_deep_think: mode.useDeepThink,
+            use_deep_think_override: mode.useDeepThink,
+            use_auto_cot: mode.useAutoCot ? '2' : '0',
             fp,
             conversation_init_option: '{"need_ack_conversation":true}',
             commerce_credit_config_enable: '0',
             sub_conv_firstmet_type: '1'
         }
+    };
+}
+
+async function buildSamanthaPayload(prompt, conversationId, sectionId, replyMessageId, files, model) {
+    const localConversationId = conversationId || `local_${Date.now()}`;
+    const localMessageId = generateUUID();
+    const mode = resolveDoubaoMode(model);
+
+    if (files && files.length > 0) {
+        throw new Error('Doubao Samantha mode does not support attachments yet.');
+    }
+
+    return {
+        messages: [
+            {
+                content: JSON.stringify({ text: prompt }),
+                content_type: 2001,
+                attachments: [],
+                references: []
+            }
+        ],
+        completion_option: {
+            is_regen: false,
+            with_suggest: true,
+            need_create_conversation: !conversationId,
+            launch_stage: 1,
+            is_replace: false,
+            is_delete: false,
+            message_from: 0,
+            use_deep_think: !!mode.useSamanthaChat,
+            use_auto_cot: !!mode.useAutoCot,
+            event_id: '0'
+        },
+        evaluate_option: {
+            web_ab_params: ''
+        },
+        section_id: sectionId || undefined,
+        conversation_id: conversationId || undefined,
+        local_conversation_id: localConversationId,
+        local_message_id: localMessageId,
+        message_id: replyMessageId || undefined,
+        reply_id: replyMessageId || undefined
     };
 }
 
@@ -261,6 +323,53 @@ function extractTextFromSamanthaLine(line) {
         }
     } catch (error) {
         // Ignore non-Samantha lines.
+    }
+
+    return chunks;
+}
+
+function extractTextFromSamanthaPayload(payload, context, accumulatedText = '') {
+    const chunks = [];
+    if (!payload || typeof payload !== 'object') {
+        return chunks;
+    }
+
+    if (payload?.code != null && payload.code !== 0) {
+        const errorMessage = payload?.message || payload?.msg || `Doubao Samantha error (${payload.code})`;
+        throw new Error(errorMessage);
+    }
+
+    const rawEventData = typeof payload.event_data === 'string'
+        ? payload.event_data
+        : JSON.stringify(payload.event_data || {});
+    updateContextFromRawText(rawEventData, context);
+
+    if (payload.event_type === 2003) {
+        return chunks;
+    }
+
+    const eventData = typeof payload.event_data === 'string'
+        ? parseEventData(payload.event_data)
+        : payload.event_data;
+    const normalized = eventData && typeof eventData === 'object'
+        ? eventData
+        : payload;
+
+    if (!normalized || normalized.is_finish) {
+        return chunks;
+    }
+
+    const message = normalized.message || payload.message;
+    const contentType = message?.content_type;
+    if (!message || !message.content) {
+        return chunks;
+    }
+
+    const content = typeof message.content === 'string'
+        ? parseEventData(message.content)
+        : message.content;
+    if (typeof content?.text === 'string' && content.text) {
+        chunks.push(appendDelta(accumulatedText, content.text));
     }
 
     return chunks;
@@ -466,6 +575,11 @@ async function parseCompletionStream(response, conversationId, sectionId, replyM
         }
         updateContextFromRawText(dataStr, context);
 
+        if (!eventName && data?.event_type != null) {
+            emitChunks(extractTextFromSamanthaPayload(data, context, fullText));
+            return true;
+        }
+
         if (eventName === 'SSE_ACK') {
             const ack = data.ack_client_meta || {};
             context.doubaoConversationId = ack.conversation_id || context.doubaoConversationId;
@@ -521,9 +635,18 @@ async function parseCompletionStream(response, conversationId, sectionId, replyM
                     continue;
                 }
 
+                const rawDataLine = trimmed.startsWith('data:')
+                    ? trimmed.slice(5).trim()
+                    : trimmed;
+                const samanthaPayload = parseEventData(rawDataLine);
+                if (samanthaPayload?.event_type != null) {
+                    emitChunks(extractTextFromSamanthaPayload(samanthaPayload, context, fullText));
+                    continue;
+                }
+
                 updateContextFromRawText(trimmed, context);
                 if (!streamState.hasRealDelta) {
-                    emitChunks(extractTextFromSamanthaLine(trimmed));
+                    emitChunks(extractTextFromSamanthaLine(rawDataLine));
                 }
             }
         }
@@ -545,9 +668,16 @@ async function parseCompletionStream(response, conversationId, sectionId, replyM
 
 export class DoubaoWebProvider {
     async sendMessage(prompt, conversationId, sectionId, replyMessageId, files, signal, onUpdate, model = 'doubao-default') {
+        const mode = resolveDoubaoMode(model);
+        const useSamanthaRoute = mode.route === 'samantha' && !(files && files.length);
         const auth = await getDoubaoAuth({ requirePage: !!(files && files.length) });
-        const payload = await buildPayload(prompt, conversationId, sectionId, replyMessageId, auth.fp, files, model);
-        const endpoint = buildCompletionUrl(auth);
+        const payload = useSamanthaRoute
+            ? await buildSamanthaPayload(prompt, conversationId, sectionId, replyMessageId, files, model)
+            : await buildLegacyPayload(prompt, conversationId, sectionId, replyMessageId, auth.fp, files, model);
+        const endpoint = buildCompletionUrl(
+            auth,
+            useSamanthaRoute ? '/samantha/chat/completion' : '/chat/completion'
+        );
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -559,8 +689,8 @@ export class DoubaoWebProvider {
                 cookie: auth.cookieHeader,
                 referer: 'https://www.doubao.com/chat/',
                 'user-agent': navigator.userAgent || 'Mozilla/5.0',
-                'agw-js-conv': 'str, str',
-                'last-event-id': 'undefined'
+                'agw-js-conv': useSamanthaRoute ? 'str' : 'str, str',
+                ...(useSamanthaRoute ? {} : { 'last-event-id': 'undefined' })
             },
             body: JSON.stringify(payload)
         });
@@ -573,7 +703,9 @@ export class DoubaoWebProvider {
             throw new Error(errorText || `Doubao request failed (${response.status})`);
         }
 
-        return await parseCompletionStream(response, conversationId, sectionId, replyMessageId, onUpdate);
+        const parsed = await parseCompletionStream(response, conversationId, sectionId, replyMessageId, onUpdate);
+        parsed.context.doubaoRoute = useSamanthaRoute ? 'samantha' : 'legacy';
+        return parsed;
     }
 
     async resetAuth() {

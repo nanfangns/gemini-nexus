@@ -1,205 +1,169 @@
 // background/handlers/session/prompt/tool_executor.js
-import { parseToolCommands } from '../utils.js';
-
-const MAX_RETRIES = 2;
+import { parseToolCommand } from '../utils.js';
+import { ToolDispatcher } from '../../../control/dispatcher.js';
 
 export class ToolExecutor {
-    constructor(controlManager) {
+    constructor(controlManager, mcpManager) {
         this.controlManager = controlManager;
+        this.mcpManager = mcpManager || null;
     }
 
-    async executeIfPresent(text, onUpdate) {
-        if (!this.controlManager) return null;
+    async executeIfPresent(text, request, onUpdate) {
+        const toolCommand = parseToolCommand(text);
+        if (!toolCommand) return null;
 
-        const tools = parseToolCommands(text);
-        if (tools.length === 0) return null;
-
-        // If only one tool, behave like before
-        if (tools.length === 1) {
-            return await this._executeSingle(tools[0], onUpdate);
-        }
-
-        // Multiple tools: execute all in sequence
-        return await this._executeBatch(tools, onUpdate);
+        return this.executeCommand(toolCommand, request, text || '');
     }
 
-    /**
-     * Executes a single tool call with retry logic.
-     */
-    async _executeSingle(toolCommand, onUpdate) {
-        const { name, args } = toolCommand;
-        onUpdate(`Executing tool: ${name}...`, "Processing tool execution...");
-
-        let lastError = null;
-        let snapshotRefreshed = false;
-
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                const execResult = await this.controlManager.execute({ name, args: args || {} });
-                const { output, files } = this._unwrapResult(execResult);
-                return {
-                    toolName: name,
-                    output,
-                    files,
-                    needsSnapshotRefresh: !snapshotRefreshed && _mayChangeState(name)
-                };
-            } catch (err) {
-                lastError = err;
-                if (_isStaleUIDError(err) && !snapshotRefreshed) {
-                    snapshotRefreshed = true;
-                    try {
-                        await this.controlManager.getSnapshot();
-                        onUpdate(`Snapshot refreshed, retrying ${name}...`, "Refreshing page state...");
-                    } catch (snapErr) {
-                        console.error("[ToolExecutor] Snapshot refresh failed:", snapErr);
-                        break;
-                    }
-                    continue;
-                }
-                break;
-            }
-        }
-
-        return {
-            toolName: name,
-            output: lastError ? `Error executing tool: ${lastError.message}` : "Unknown error",
-            files: null,
-            needsSnapshotRefresh: snapshotRefreshed
-        };
-    }
-
-    /**
-     * Executes multiple tool calls in sequence.
-     * Each tool's output is collected, and a combined summary is returned.
-     */
-    async _executeBatch(tools, onUpdate) {
+    async executeFunctionCalls(functionCalls, request) {
+        const calls = Array.isArray(functionCalls) ? functionCalls : [];
+        const validCalls = calls.filter(
+            (call) => call && typeof call.name === 'string' && call.name.trim()
+        );
         const results = [];
-        let needsSnapshotRefresh = false;
 
-        for (let i = 0; i < tools.length; i++) {
-            const tool = tools[i];
-            const { name, args } = tool;
-
-            onUpdate(
-                `Executing tool ${i + 1}/${tools.length}: ${name}...`,
-                `Batch execution (${i + 1}/${tools.length})`
+        for (const [index, call] of validCalls.entries()) {
+            results.push(
+                await this.executeCommand(
+                    {
+                        name: call.name,
+                        args: call.args || {},
+                        id: call.id || null,
+                    },
+                    request,
+                    this.formatFunctionCallText(call),
+                    {
+                        callIndex: index + 1,
+                        callCount: validCalls.length,
+                    }
+                )
             );
+        }
 
-            let lastError = null;
-            let snapshotRefreshed = false;
-            let success = false;
+        return results;
+    }
 
-            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-                try {
-                    const execResult = await this.controlManager.execute({ name, args: args || {} });
-                    const { output, files } = this._unwrapResult(execResult);
-                    results.push({ toolName: name, output, files });
+    formatFunctionCallText(call) {
+        if (!call) return '';
+        return `function_call: ${call.name}(${JSON.stringify(call.args || {})})`;
+    }
 
-                    if (!snapshotRefreshed && _mayChangeState(name)) {
-                        needsSnapshotRefresh = true;
-                    }
-                    success = true;
-                    break;
-                } catch (err) {
-                    lastError = err;
-                    if (_isStaleUIDError(err) && !snapshotRefreshed) {
-                        snapshotRefreshed = true;
-                        try {
-                            await this.controlManager.getSnapshot();
-                            onUpdate(`Snapshot refreshed, retrying ${name} (attempt ${attempt + 2})...`, "Refreshing page state...");
-                        } catch (snapErr) {
-                            console.error("[ToolExecutor] Snapshot refresh failed:", snapErr);
-                            break;
-                        }
-                        continue;
-                    }
-                    break;
+    async executeCommand(toolCommand, request, toolCallText = '', callMeta = {}) {
+        const toolName = toolCommand.name;
+        const callIndex = Number.isFinite(callMeta.callIndex) ? callMeta.callIndex : null;
+        const callCount = Number.isFinite(callMeta.callCount) ? callMeta.callCount : null;
+        const statusKey = this.createToolStatusKey(request, toolName, callIndex, callCount);
+        this.sendToolStatus(request, {
+            statusKey,
+            toolName,
+            status: 'running',
+            toolCallText,
+            callIndex,
+            callCount,
+        });
+
+        let output = '';
+        let files = null;
+        let source = 'unknown';
+        let status = 'completed';
+
+        try {
+            if (ToolDispatcher.isLocalTool(toolName) && request.enableBrowserControl === true) {
+                if (!this.controlManager) {
+                    throw new Error('Browser control is unavailable.');
                 }
-            }
 
-            if (!success) {
-                results.push({
-                    toolName: name,
-                    output: lastError ? `Error: ${lastError.message}` : "Unknown error",
-                    files: null
+                source = 'browser_control';
+                const execResult = await this.controlManager.execute({
+                    name: toolName,
+                    args: toolCommand.args || {},
                 });
-            }
 
-            // Small delay between batch tools to let the page settle
-            if (i < tools.length - 1) {
-                await new Promise(r => setTimeout(r, 300));
+                if (execResult && typeof execResult === 'object' && execResult.image) {
+                    output = execResult.text || '';
+                    files = [
+                        {
+                            base64: execResult.image,
+                            type: 'image/png',
+                            name: 'screenshot.png',
+                        },
+                    ];
+                } else {
+                    output = execResult;
+                }
+            } else {
+                // Check if MCP is available
+                const mcpEnabled = request.enableMcpTools === true && this.mcpManager;
+
+                if (!mcpEnabled) {
+                    throw new Error(
+                        `Unknown tool '${toolName}'. (External MCP tools are disabled)`
+                    );
+                }
+
+                source = 'mcp_remote';
+                const remote = await this.mcpManager.callTool(toolName, toolCommand.args || {});
+                output = typeof remote === 'string' ? remote : JSON.stringify(remote, null, 2);
+            }
+        } catch (err) {
+            output = `Error executing tool: ${err.message}`;
+            status = 'failed';
+
+            // Attempt snapshot refresh on stale UID errors
+            if (source === 'browser_control' && this._isStaleUIDError(err)) {
+                try {
+                    await this.controlManager.getSnapshot();
+                } catch (_) {}
             }
         }
 
-        // Combine outputs into a summary
-        const combinedOutput = _formatBatchResults(results);
-        const allFiles = results.flatMap(r => r.files || []);
+        this.sendToolStatus(request, {
+            statusKey,
+            toolName,
+            status,
+            toolCallText,
+            callIndex,
+            callCount,
+        });
 
         return {
-            toolName: `batch(${tools.length})`,
-            output: combinedOutput,
-            files: allFiles.length > 0 ? allFiles : null,
-            needsSnapshotRefresh
+            toolName,
+            output,
+            files,
+            source,
+            status,
+            needsSnapshotRefresh: source === 'browser_control' && ToolDispatcher.isLocalTool(toolName),
+            id: toolCommand.id || null,
+            args: toolCommand.args || {},
+            callIndex,
+            callCount,
         };
     }
 
-    /**
-     * Unwraps the result from a tool execution into output + files.
-     */
-    _unwrapResult(execResult) {
-        let output = "";
-        let files = null;
-
-        if (execResult && typeof execResult === 'object' && execResult.image) {
-            output = execResult.text || "";
-            files = [{
-                base64: execResult.image,
-                type: "image/png",
-                name: "screenshot.png"
-            }];
-        } else if (execResult && typeof execResult === 'object' && execResult.output !== undefined) {
-            output = execResult.output;
-        } else if (execResult !== undefined && execResult !== null) {
-            output = String(execResult);
-        }
-
-        return { output, files };
+    createToolStatusKey(request, toolName, callIndex, callCount) {
+        const session = request.sessionId || 'no-session';
+        const index = callIndex != null ? callIndex : 0;
+        const count = callCount != null ? callCount : 1;
+        return `${session}::${toolName}::${index}/${count}`;
     }
-}
 
-/**
- * Formats multiple tool results into a readable combined output.
- */
-function _formatBatchResults(results) {
-    if (results.length === 0) return "No results.";
+    sendToolStatus(request, payload) {
+        try {
+            chrome.runtime.sendMessage({
+                action: 'TOOL_STATUS',
+                sessionId: request.sessionId || null,
+                ...payload,
+            }).catch(() => {});
+        } catch (_) {}
+    }
 
-    return results.map((r, i) => {
-        const status = r.output.startsWith("Error") ? "FAIL" : "OK";
-        const truncated = r.output.length > 200 ? r.output.substring(0, 200) + "..." : r.output;
-        return `[${i + 1}/${results.length}] ${status} ${r.toolName}: ${truncated}`;
-    }).join("\n");
-}
-
-/**
- * Checks if an error message indicates a stale UID issue.
- */
-function _isStaleUIDError(err) {
-    const msg = err.message || "";
-    return msg.includes("Stale Element Reference") ||
-           msg.includes("older snapshot") ||
-           msg.includes("not found in current snapshot") ||
-           msg.includes("is detached from the DOM");
-}
-
-/**
- * Checks if a tool name may change page state and thus warrants a snapshot refresh.
- */
-function _mayChangeState(toolName) {
-    const stateChangingTools = [
-        'click', 'drag_element', 'fill', 'fill_form', 'hover',
-        'press_key', 'navigate_page', 'new_page', 'close_page',
-        'select_page', 'attach_file', 'handle_dialog', 'emulate', 'resize_page',
-        'start_trace', 'stop_trace'
-    ];
-    return stateChangingTools.includes(toolName);
+    _isStaleUIDError(err) {
+        const msg = err.message || '';
+        return (
+            msg.includes('Stale Element Reference') ||
+            msg.includes('older snapshot') ||
+            msg.includes('not found in current snapshot') ||
+            msg.includes('is detached from the DOM')
+        );
+    }
 }

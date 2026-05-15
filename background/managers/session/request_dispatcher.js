@@ -8,6 +8,39 @@ import { sendXaiMessage } from '../../../services/providers/xai.js';
 import { doubaoWebProvider } from '../../../services/providers/doubao_web.js';
 import { getHistory } from './history_store.js';
 
+function resolveDoubaoRoute(model) {
+    return model === 'doubao-think' ? 'samantha' : 'legacy';
+}
+
+function buildDoubaoHistoryPrompt(history, currentText, systemInstruction) {
+    const lines = [];
+
+    if (systemInstruction) {
+        lines.push(systemInstruction, '');
+    }
+
+    const recentMessages = Array.isArray(history) ? history.slice(-12) : [];
+    if (!recentMessages.length) {
+        lines.push(currentText);
+        return lines.join('\n');
+    }
+
+    lines.push('以下是当前对话历史，请基于这些历史内容继续回答最后一条用户消息：', '');
+    for (const message of recentMessages) {
+        if (!message?.text) continue;
+        const roleLabel = message.role === 'ai' ? '助手' : '用户';
+        lines.push(`${roleLabel}: ${message.text}`);
+    }
+
+    const lastMessage = recentMessages[recentMessages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'user' || lastMessage.text !== currentText) {
+        lines.push(`用户: ${currentText}`);
+    }
+
+    lines.push('', '请直接继续回答最后一条用户消息，不要重复转述整段历史。');
+    return lines.join('\n');
+}
+
 export class RequestDispatcher {
     constructor(authManager) {
         this.auth = authManager;
@@ -170,14 +203,27 @@ export class RequestDispatcher {
     }
 
     async _handleDoubaoWebRequest(request, settings, files, onUpdate, signal) {
-        let fullText = request.text;
-        if (request.systemInstruction) {
-            fullText = request.systemInstruction + "\n\n" + fullText;
-        }
-
         let targetModel = settings.model || request.model || 'doubao-default';
         if (!['doubao-default', 'doubao-think', 'doubao-expert'].includes(targetModel)) {
             targetModel = 'doubao-default';
+        }
+        const targetRoute = resolveDoubaoRoute(targetModel);
+        const previousRoute = request.doubaoRoute || '';
+        const routeChanged = previousRoute && previousRoute !== targetRoute;
+
+        const history = await getHistory(request.sessionId);
+        let fullText = request.text;
+        let conversationId = request.doubaoConversationId || '';
+        let sectionId = request.doubaoSectionId || '';
+        let replyMessageId = request.doubaoReplyMessageId || '';
+
+        if (targetRoute === 'samantha' || routeChanged) {
+            fullText = buildDoubaoHistoryPrompt(history, request.text, request.systemInstruction);
+            conversationId = '';
+            sectionId = '';
+            replyMessageId = '';
+        } else if (request.systemInstruction) {
+            fullText = request.systemInstruction + "\n\n" + fullText;
         }
 
         let attemptCount = 0;
@@ -189,9 +235,9 @@ export class RequestDispatcher {
             try {
                 const response = await doubaoWebProvider.sendMessage(
                     fullText,
-                    request.doubaoConversationId || '',
-                    request.doubaoSectionId || '',
-                    request.doubaoReplyMessageId || '',
+                    conversationId,
+                    sectionId,
+                    replyMessageId,
                     files,
                     signal,
                     onUpdate,

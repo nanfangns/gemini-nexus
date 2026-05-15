@@ -6,6 +6,62 @@
  * Decouples logic from the main ControlManager.
  */
 export class ToolDispatcher {
+    static LOCAL_TOOL_NAMES = new Set([
+        // Navigation
+        'navigate_page',
+        'new_page',
+        'close_page',
+        'list_pages',
+        'select_page',
+
+        // Interaction
+        'click',
+        'click_element',
+        'drag_element',
+        'hover',
+        'hover_element',
+        'fill',
+        'fill_element',
+        'fill_form',
+        'press_key',
+        'handle_dialog',
+        'attach_file',
+
+        // Observation & Logic
+        'take_screenshot',
+        'screenshot',
+        'take_snapshot',
+        'snapshot',
+        'get_snapshot',
+        'wait_for',
+        'evaluate_script',
+        'run_javascript',
+        'run_script',
+        'js',
+
+        // Emulation
+        'emulate',
+        'resize_page',
+
+        // Performance
+        'performance_start_trace',
+        'start_trace',
+        'performance_stop_trace',
+        'stop_trace',
+        'performance_analyze_insight',
+
+        // Observability / Network
+        'get_logs',
+        'console_logs',
+        'get_network_activity',
+        'list_network_requests',
+        'get_network_request',
+    ]);
+
+    static isLocalTool(name) {
+        return ToolDispatcher.LOCAL_TOOL_NAMES.has(name);
+    }
+
     constructor(actions, snapshotManager) {
         this.actions = actions;
         this.snapshotManager = snapshotManager;
@@ -25,12 +81,12 @@ export class ToolDispatcher {
                 case 'select_page': return await this.actions.selectPage(args);
 
                 // Interaction
-                case 'click': return await this.actions.clickElement(args);
+                case 'click':
                 case 'click_element': return await this.actions.clickElement(args);
                 case 'drag_element': return await this.actions.dragElement(args);
-                case 'hover': return await this.actions.hoverElement(args);
+                case 'hover':
                 case 'hover_element': return await this.actions.hoverElement(args);
-                case 'fill': return await this.actions.fillElement(args);
+                case 'fill':
                 case 'fill_element': return await this.actions.fillElement(args);
                 case 'fill_form': return await this.actions.fillForm(args);
                 case 'press_key': return await this.actions.pressKey(args);
@@ -38,13 +94,13 @@ export class ToolDispatcher {
                 case 'attach_file': return await this.actions.attachFile(args);
 
                 // Observation & Logic
-                case 'take_screenshot': return await this.actions.takeScreenshot(args);
+                case 'take_screenshot':
                 case 'screenshot': return await this.actions.takeScreenshot(args);
-                case 'take_snapshot': return await this.snapshotManager.takeSnapshot(args);
-                case 'snapshot': return await this.snapshotManager.takeSnapshot(args);
+                case 'take_snapshot':
+                case 'snapshot':
                 case 'get_snapshot': return await this.snapshotManager.takeSnapshot(args);
                 case 'wait_for': return await this.actions.waitFor(args);
-                case 'evaluate_script': return await this.actions.evaluateScript(args);
+                case 'evaluate_script':
                 case 'run_javascript':
                 case 'run_script':
                 case 'js': return await this.actions.evaluateScript(args);
@@ -64,7 +120,7 @@ export class ToolDispatcher {
                     return await this.actions.analyzeInsight(args);
 
                 // Observability / Network
-                case 'get_logs': return await this.actions.observation.getLogs();
+                case 'get_logs':
                 case 'console_logs': return await this.actions.observation.getLogs();
                 case 'get_network_activity': return await this.actions.observation.getNetworkActivity();
                 case 'list_network_requests': return await this.actions.observation.listNetworkRequests(args);
